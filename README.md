@@ -44,8 +44,8 @@
 - Báo lỗi hoặc đề xuất tính năng qua Issues
 
 ## Thông tin liên hệ
-- Giảng viên hướng dẫn: [Tên GV]
-- Nhóm thực hiện: [Tên các thành viên]
+- Giảng viên hướng dẫn: 
+- Nhóm thực hiện: 
 
 ## License
 Xem file LICENSE để biết thêm chi tiết.
