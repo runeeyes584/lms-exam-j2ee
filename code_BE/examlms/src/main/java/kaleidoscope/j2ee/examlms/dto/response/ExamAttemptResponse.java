@@ -1,0 +1,29 @@
+package kaleidoscope.j2ee.examlms.dto.response;
+
+import kaleidoscope.j2ee.examlms.entity.AttemptStatus;
+import kaleidoscope.j2ee.examlms.entity.StudentAnswer;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExamAttemptResponse {
+    private String id;
+    private String examId;
+    private String studentId;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+    private LocalDateTime submittedAt;
+    private List<StudentAnswer> answers;
+    private Double totalScore;
+    private Double autoGradedScore;
+    private Double manualGradedScore;
+    private AttemptStatus status;
+    private String gradedBy;
+    private LocalDateTime gradedAt;
+}
