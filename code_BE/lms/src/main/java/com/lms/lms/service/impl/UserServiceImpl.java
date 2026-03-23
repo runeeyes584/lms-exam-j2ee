@@ -1,10 +1,18 @@
 package com.lms.lms.service.impl;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.lms.lms.dto.request.ChangePasswordRequest;
+import com.lms.lms.dto.request.UpdateProfileRequest;
 import com.lms.lms.dto.response.UserProfileResponse;
 import com.lms.lms.entity.User;
 import com.lms.lms.entity.enums.Role;
@@ -12,11 +20,14 @@ import com.lms.lms.exception.AppException;
 import com.lms.lms.repository.UserRepository;
 import com.lms.lms.service.UserService;
 import com.lms.lms.utils.ResponseCode;
+import org.springframework.beans.factory.annotation.Value;
 
+import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Service
+
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -24,7 +35,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User register(String email, String rawPassword, String fullName) {
         if (userRepository.existsByEmail(email)) {
-            throw new AppException(ResponseCode.VALIDATION_ERROR, "Email already by exits");
+            throw new AppException(ResponseCode.VALIDATION_ERROR, "Email already exits");
         }
         Instant now = Instant.now();
 
@@ -52,6 +63,103 @@ public class UserServiceImpl implements UserService {
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .build();
+    }
+
+    @Override
+    public UserProfileResponse updateMyProfile(String userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.NOT_FOUND, "User not found"));
+
+        user.setFullName(request.fullName());
+        user.setUpdatedAt(Instant.now());
+
+        User savedUser = userRepository.save(user);
+
+        return UserProfileResponse.builder()
+                .id(savedUser.getId())
+                .email(savedUser.getEmail())
+                .fullName(savedUser.getFullName())
+                .avatarUrl(savedUser.getAvatarUrl())
+                .role(savedUser.getRole())
+                .build();
+    }
+
+    @Override
+    public void changePassword(String userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(request.oldPassword(), user.getPasswordHash())) {
+            throw new AppException(ResponseCode.UNAUTHORIZED, "Old password is incorrect");
+        }
+
+        if (request.oldPassword().equals(request.newPassword())) {
+            throw new AppException(ResponseCode.VALIDATION_ERROR, "New password must be different from old password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setUpdatedAt(Instant.now());
+
+        userRepository.save(user);
+    }
+
+    @Value("${upload.dir}")
+    private String uploadDir;
+
+    @Override
+    public UserProfileResponse uploadAvatar(String userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.NOT_FOUND, "User not found"));
+
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ResponseCode.VALIDATION_ERROR, "Avatar file is required");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null ||
+                (!contentType.equals("image/jpeg")
+                        && !contentType.equals("image/png")
+                        && !contentType.equals("image/webp"))) {
+            throw new AppException(ResponseCode.VALIDATION_ERROR, "Only JPG, PNG, WEBP files are allowed");
+        }
+
+        try {
+            Path avatarDir = Paths.get(uploadDir, "avatars").toAbsolutePath().normalize();
+            Files.createDirectories(avatarDir);
+
+            String originalFilename = file.getOriginalFilename();
+            String extension = getFileExtension(originalFilename);
+
+            String newFileName = UUID.randomUUID() + (extension.isBlank() ? "" : "." + extension);
+            Path targetPath = avatarDir.resolve(newFileName);
+
+            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            String avatarUrl = "/uploads/avatars/" + newFileName;
+
+            user.setAvatarUrl(avatarUrl);
+            user.setUpdatedAt(Instant.now());
+
+            User savedUser = userRepository.save(user);
+
+            return UserProfileResponse.builder()
+                    .id(savedUser.getId())
+                    .email(savedUser.getEmail())
+                    .fullName(savedUser.getFullName())
+                    .avatarUrl(savedUser.getAvatarUrl())
+                    .role(savedUser.getRole())
+                    .build();
+
+        } catch (IOException ex) {
+            throw new AppException(ResponseCode.ERROR, "Failed to upload avatar");
+        }
+    }
+
+    private String getFileExtension(String fileName) {
+        if (fileName == null || !fileName.contains(".")) {
+            return "";
+        }
+        return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
     }
 
 }
