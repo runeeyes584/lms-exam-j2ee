@@ -49,13 +49,7 @@ public class UserServiceImpl implements UserService {
                 .build();
         User saved = userRepository.save(user);
 
-        return UserProfileResponse.builder()
-                .id(saved.getId())
-                .email(saved.getEmail())
-                .fullName(saved.getFullName())
-                .avatarUrl(saved.getAvatarUrl())
-                .role(saved.getRole())
-                .build();
+        return toProfileResponse(saved);
     }
 
     @Override
@@ -63,13 +57,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.NOT_FOUND, "User not found"));
 
-        return UserProfileResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .avatarUrl(user.getAvatarUrl())
-                .role(user.getRole())
-                .build();
+        return toProfileResponse(user);
     }
 
     @Override
@@ -78,17 +66,16 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ResponseCode.NOT_FOUND, "User not found"));
 
         user.setFullName(request.fullName());
+        user.setPhoneNumber(request.phoneNumber());
+        user.setDateOfBirth(request.dateOfBirth());
+        user.setAddress(request.address());
+        user.setGender(request.gender());
+        user.setSchoolId(request.schoolId());
         user.setUpdatedAt(Instant.now());
 
         User savedUser = userRepository.save(user);
 
-        return UserProfileResponse.builder()
-                .id(savedUser.getId())
-                .email(savedUser.getEmail())
-                .fullName(savedUser.getFullName())
-                .avatarUrl(savedUser.getAvatarUrl())
-                .role(savedUser.getRole())
-                .build();
+        return toProfileResponse(savedUser);
     }
 
     @Override
@@ -156,13 +143,7 @@ public class UserServiceImpl implements UserService {
 
             User savedUser = userRepository.save(user);
 
-            return UserProfileResponse.builder()
-                    .id(savedUser.getId())
-                    .email(savedUser.getEmail())
-                    .fullName(savedUser.getFullName())
-                    .avatarUrl(savedUser.getAvatarUrl())
-                    .role(savedUser.getRole())
-                    .build();
+            return toProfileResponse(savedUser);
 
         } catch (IOException ex) {
             throw new AppException(ResponseCode.ERROR, "Failed to upload avatar");
@@ -174,6 +155,21 @@ public class UserServiceImpl implements UserService {
             return "";
         }
         return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+    }
+
+    private UserProfileResponse toProfileResponse(User user) {
+        return UserProfileResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .avatarUrl(user.getAvatarUrl())
+                .role(user.getRole())
+                .phoneNumber(user.getPhoneNumber())
+                .dateOfBirth(user.getDateOfBirth())
+                .address(user.getAddress())
+                .gender(user.getGender())
+                .schoolId(user.getSchoolId())
+                .build();
     }
 
 }
