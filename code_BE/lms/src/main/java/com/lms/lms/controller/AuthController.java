@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lms.lms.dto.request.LoginRequest;
+import com.lms.lms.dto.request.LogoutRequest;
+import com.lms.lms.dto.request.RefreshTokenRequest;
 import com.lms.lms.dto.request.RegisterRequest;
 import com.lms.lms.dto.response.ApiResponse;
 import com.lms.lms.dto.response.AuthResponse;
@@ -34,6 +36,17 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
         return ApiResponseUtil.success("Logged in", authService.login(req.email(), req.password()));
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest req) {
+        return ApiResponseUtil.success("Refreshed", authService.refresh(req.refreshToken()));
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@Valid @RequestBody LogoutRequest req) {
+        authService.logout(req.refreshToken());
+        return ApiResponseUtil.success("Logged out", null);
     }
 
 }
