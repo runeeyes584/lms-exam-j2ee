@@ -1,0 +1,426 @@
+{
+  "info": {
+    "_postman_id": "lms-exam-api",
+    "name": "LMS Exam API - Interaction & Analytics",
+    "description": "Postman collection for LMS Exam API - Module: Tương tác & Phân tích dữ liệu (thuan-task)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "courseId",
+      "value": "607f1f77bcf86cd799439001",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "507f1f77bcf86cd799439011",
+      "type": "string"
+    },
+    {
+      "key": "lessonId",
+      "value": "707f1f77bcf86cd799439001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Reviews",
+      "description": "API đánh giá khóa học (1-5 sao)",
+      "item": [
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"userId\": \"{{userId}}\",\n  \"userName\": \"Nguyễn Văn A\",\n  \"userAvatar\": \"https://example.com/avatar.jpg\",\n  \"rating\": 5,\n  \"comment\": \"Khóa học rất hay và bổ ích!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Tạo đánh giá mới cho khóa học. Yêu cầu user đã mua khóa học."
+          }
+        },
+        {
+          "name": "List Reviews by Course",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reviews/course/{{courseId}}?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "course", "{{courseId}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Lấy danh sách đánh giá của khóa học (phân trang)"
+          }
+        },
+        {
+          "name": "Get Review by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:reviewId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":reviewId"],
+              "variable": [
+                {
+                  "key": "reviewId",
+                  "value": "REVIEW_ID_HERE"
+                }
+              ]
+            },
+            "description": "Lấy chi tiết một đánh giá"
+          }
+        },
+        {
+          "name": "Get Course Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reviews/course/{{courseId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "course", "{{courseId}}", "stats"]
+            },
+            "description": "Lấy thống kê đánh giá (avgRating, count)"
+          }
+        },
+        {
+          "name": "Update Review",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:reviewId?userId={{userId}}&rating=4&comment=Updated comment",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":reviewId"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                },
+                {
+                  "key": "rating",
+                  "value": "4"
+                },
+                {
+                  "key": "comment",
+                  "value": "Updated comment"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "reviewId",
+                  "value": "REVIEW_ID_HERE"
+                }
+              ]
+            },
+            "description": "Cập nhật đánh giá (chỉ owner)"
+          }
+        },
+        {
+          "name": "Delete Review",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:reviewId?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":reviewId"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "reviewId",
+                  "value": "REVIEW_ID_HERE"
+                }
+              ]
+            },
+            "description": "Xóa đánh giá (soft-delete, chỉ owner)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comments (Q&A)",
+      "description": "API hỏi đáp/bình luận cho khóa học",
+      "item": [
+        {
+          "name": "Create Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"lessonId\": \"{{lessonId}}\",\n  \"userId\": \"{{userId}}\",\n  \"userName\": \"Nguyen Van A\",\n  \"content\": \"Thầy ơi cho em hỏi về bài này...\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments"]
+            },
+            "description": "Tạo comment mới"
+          }
+        },
+        {
+          "name": "Create Reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"lessonId\": \"{{lessonId}}\",\n  \"userId\": \"{{userId}}\",\n  \"userName\": \"Teacher B\",\n  \"content\": \"Em xem lại phần này nhé...\",\n  \"parentId\": \"PARENT_COMMENT_ID\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments"]
+            },
+            "description": "Tạo reply cho comment (trả lời)"
+          }
+        },
+        {
+          "name": "List Comments by Course",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/comments/course/{{courseId}}?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "course", "{{courseId}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Lấy danh sách comments top-level của khóa học"
+          }
+        },
+        {
+          "name": "List Comments by Lesson",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/comments/course/{{courseId}}?lessonId={{lessonId}}&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "course", "{{courseId}}"],
+              "query": [
+                {
+                  "key": "lessonId",
+                  "value": "{{lessonId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Lấy comments của một lesson cụ thể"
+          }
+        },
+        {
+          "name": "Get Comment with Replies",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/comments/:commentId",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", ":commentId"],
+              "variable": [
+                {
+                  "key": "commentId",
+                  "value": "COMMENT_ID_HERE"
+                }
+              ]
+            },
+            "description": "Lấy comment với tất cả replies"
+          }
+        },
+        {
+          "name": "Get Replies",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/comments/:commentId/replies",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", ":commentId", "replies"],
+              "variable": [
+                {
+                  "key": "commentId",
+                  "value": "COMMENT_ID_HERE"
+                }
+              ]
+            },
+            "description": "Lấy danh sách replies của một comment"
+          }
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/comments/:commentId?userId={{userId}}&content=Updated content",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", ":commentId"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                },
+                {
+                  "key": "content",
+                  "value": "Updated content"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "commentId",
+                  "value": "COMMENT_ID_HERE"
+                }
+              ]
+            },
+            "description": "Cập nhật comment (chỉ owner)"
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/comments/:commentId?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", ":commentId"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "commentId",
+                  "value": "COMMENT_ID_HERE"
+                }
+              ]
+            },
+            "description": "Xóa comment (soft-delete, chỉ owner)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "description": "API phân tích dữ liệu cho admin dashboard",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "dashboard"]
+            },
+            "description": "Lấy tổng quan dashboard (totalUsers, totalCourses, totalEnrollments, totalRevenue)"
+          }
+        },
+        {
+          "name": "Revenue by Month",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/revenue?year=2024",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "revenue"],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2024"
+                }
+              ]
+            },
+            "description": "Lấy doanh thu theo tháng trong năm"
+          }
+        },
+        {
+          "name": "Top Courses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/top-courses?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "top-courses"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Lấy top khóa học có nhiều học viên nhất"
+          }
+        },
+        {
+          "name": "New Users by Month",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analytics/new-users?year=2024",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "new-users"],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2024"
+                }
+              ]
+            },
+            "description": "Lấy số user mới đăng ký theo tháng"
+          }
+        }
+      ]
+    }
+  ]
+}
