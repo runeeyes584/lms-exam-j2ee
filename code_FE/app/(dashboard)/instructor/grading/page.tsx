@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { GraduationCap, Search, CheckCircle, Clock, Eye, Edit, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { gradingService } from '@/services/gradingService';
-import { AttemptResponse } from '@/services/attemptService';
+import { ExamAttemptResponse as AttemptResponse } from '@/services/attemptService';
 import { ResponseCode } from '@/types/types';
 import { toast } from 'react-hot-toast';
 
@@ -35,9 +35,9 @@ export default function GradingPage() {
       console.error('Error fetching attempts:', error);
       // Mock data for demo
       setAttempts([
-        { id: '1', examId: '1', studentId: '1', studentName: 'Nguyễn Văn A', examTitle: 'Kiểm tra Java cơ bản', answers: [], startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 75, percentage: 75, status: 'AUTO_GRADED', passed: true },
-        { id: '2', examId: '1', studentId: '2', studentName: 'Trần Thị B', examTitle: 'Kiểm tra Java cơ bản', answers: [], startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 60, percentage: 60, status: 'SUBMITTED', passed: false },
-        { id: '3', examId: '2', studentId: '3', studentName: 'Lê Văn C', examTitle: 'Thi giữa kỳ React', answers: [], startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 0, percentage: 0, status: 'SUBMITTED', passed: false },
+        { id: '1', examId: '1', studentId: '1', studentName: 'Nguyễn Văn A', examTitle: 'Kiểm tra Java cơ bản', answers: {}, startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 75, percentage: 75, status: 'AUTO_GRADED', passed: true },
+        { id: '2', examId: '1', studentId: '2', studentName: 'Trần Thị B', examTitle: 'Kiểm tra Java cơ bản', answers: {}, startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 60, percentage: 60, status: 'SUBMITTED', passed: false },
+        { id: '3', examId: '2', studentId: '3', studentName: 'Lê Văn C', examTitle: 'Thi giữa kỳ React', answers: {}, startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 0, percentage: 0, status: 'SUBMITTED', passed: false },
       ]);
     } finally {
       setLoading(false);
@@ -48,7 +48,7 @@ export default function GradingPage() {
     try {
       const response = await gradingService.finalize(attemptId);
       if (response.code === ResponseCode.SUCCESS) {
-        setAttempts(prev => prev.map(a => 
+        setAttempts(prev => prev.map(a =>
           a.id === attemptId ? { ...a, status: 'MANUAL_GRADED' } : a
         ));
         toast.success('Đã hoàn thành chấm điểm');
@@ -63,11 +63,11 @@ export default function GradingPage() {
   if (authLoading || loading) return <PageLoading message="Đang tải danh sách chấm điểm..." />;
 
   const filteredAttempts = attempts.filter(a => {
-    const matchesSearch = 
-      (a.studentName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+    const matchesSearch =
+      (a.studentName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (a.examTitle?.toLowerCase() || '').includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || 
-      (filter === 'pending' && a.status === 'SUBMITTED') || 
+    const matchesFilter = filter === 'all' ||
+      (filter === 'pending' && a.status === 'SUBMITTED') ||
       (filter === 'graded' && (a.status === 'AUTO_GRADED' || a.status === 'MANUAL_GRADED'));
     return matchesSearch && matchesFilter;
   });
