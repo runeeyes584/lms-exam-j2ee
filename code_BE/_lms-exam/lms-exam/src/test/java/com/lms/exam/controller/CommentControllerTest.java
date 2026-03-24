@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -25,6 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CommentController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class CommentControllerTest {
 
     @Autowired
@@ -150,9 +152,16 @@ class CommentControllerTest {
         when(commentService.update(eq("comment123"), eq("user123"), eq("Updated content")))
                 .thenReturn(sampleResponse);
 
+        String body = """
+            {
+              "userId": "user123",
+              "content": "Updated content"
+            }
+            """;
+
         mockMvc.perform(put("/api/comments/comment123")
-                        .param("userId", "user123")
-                        .param("content", "Updated content"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 

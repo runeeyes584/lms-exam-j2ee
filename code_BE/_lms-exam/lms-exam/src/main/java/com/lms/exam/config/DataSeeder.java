@@ -21,7 +21,7 @@ import java.util.List;
  * Chạy: ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
  */
 @Configuration
-@Profile({"dev", "test"})
+@Profile("dev")
 public class DataSeeder {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);

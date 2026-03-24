@@ -68,9 +68,9 @@ cd _lms-exam/lms-exam
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | POST | `/api/reviews` | Tạo đánh giá mới |
-| GET | `/api/reviews?courseId=xxx` | Danh sách đánh giá theo khóa học |
+| GET | `/api/reviews/course/{courseId}?page=0&size=10` | Danh sách đánh giá theo khóa học |
 | GET | `/api/reviews/{id}` | Chi tiết đánh giá |
-| GET | `/api/reviews/stats?courseId=xxx` | Thống kê đánh giá |
+| GET | `/api/reviews/course/{courseId}/stats` | Thống kê đánh giá |
 | PUT | `/api/reviews/{id}` | Cập nhật đánh giá |
 | DELETE | `/api/reviews/{id}?userId=xxx` | Xóa đánh giá |
 
@@ -78,7 +78,7 @@ cd _lms-exam/lms-exam
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | POST | `/api/comments` | Tạo comment/câu hỏi |
-| GET | `/api/comments?courseId=xxx` | Danh sách comments |
+| GET | `/api/comments/course/{courseId}?lessonId=xxx&page=0&size=20` | Danh sách comments |
 | GET | `/api/comments/{id}` | Chi tiết comment với replies |
 | GET | `/api/comments/{id}/replies` | Danh sách replies |
 | PUT | `/api/comments/{id}` | Cập nhật comment |
@@ -88,8 +88,8 @@ cd _lms-exam/lms-exam
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | GET | `/api/analytics/dashboard` | Tổng quan dashboard |
-| GET | `/api/analytics/revenue/monthly?year=2026` | Doanh thu theo tháng |
-| GET | `/api/analytics/users/monthly?year=2026` | Users mới theo tháng |
+| GET | `/api/analytics/revenue?year=2026` | Doanh thu theo tháng |
+| GET | `/api/analytics/new-users?year=2026` | Users mới theo tháng |
 | GET | `/api/analytics/courses/top-enrollment?limit=10` | Top khóa học theo enrollment |
 | GET | `/api/analytics/courses/top-revenue?limit=10` | Top khóa học theo doanh thu |
 | GET | `/api/analytics/courses/{courseId}` | Thống kê khóa học cụ thể |

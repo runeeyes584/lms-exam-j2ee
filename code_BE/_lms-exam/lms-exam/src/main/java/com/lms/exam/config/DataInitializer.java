@@ -4,9 +4,11 @@ import com.lms.exam.model.Exam;
 import com.lms.exam.repository.ExamRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!test")
 public class DataInitializer implements ApplicationRunner {
 
     private final ExamRepository repo;
