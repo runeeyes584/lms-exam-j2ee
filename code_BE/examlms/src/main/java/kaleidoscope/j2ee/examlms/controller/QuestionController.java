@@ -5,9 +5,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kaleidoscope.j2ee.examlms.dto.request.QuestionCreateRequest;
 import kaleidoscope.j2ee.examlms.dto.response.ApiResponse;
+import kaleidoscope.j2ee.examlms.dto.response.ExcelImportResponse;
 import kaleidoscope.j2ee.examlms.dto.response.QuestionResponse;
 import kaleidoscope.j2ee.examlms.entity.DifficultyLevel;
 import kaleidoscope.j2ee.examlms.entity.QuestionType;
+import kaleidoscope.j2ee.examlms.service.ExcelImportService;
 import kaleidoscope.j2ee.examlms.service.QuestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,8 +17,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -27,6 +31,7 @@ import java.util.List;
 public class QuestionController {
     
     private final QuestionService questionService;
+    private final ExcelImportService excelImportService;
     
     @PostMapping
     @Operation(summary = "Create a new question")
@@ -127,5 +132,38 @@ public class QuestionController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<QuestionResponse> response = questionService.getQuestionsByCreator(userId, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+    
+    @PostMapping(value = "/import/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Import questions from Excel file",
+               description = "Upload an Excel file (.xlsx) to bulk import questions. " +
+                           "Returns success/failure counts and error details.")
+    public ResponseEntity<ApiResponse<ExcelImportResponse>> importQuestionsFromExcel(
+            @RequestParam("file") MultipartFile file) {
+        
+        // Validate file
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("File is empty"));
+        }
+        
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.endsWith(".xlsx")) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Only .xlsx files are supported"));
+        }
+        
+        ExcelImportResponse response = excelImportService.importQuestions(file);
+        
+        if (response.getFailureCount() > 0 && response.getSuccessCount() == 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>(9999, "Import failed: all rows had errors", response));
+        } else if (response.getFailureCount() > 0) {
+            return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .body(ApiResponse.success("Import completed with some errors", response));
+        } else {
+            return ResponseEntity.ok()
+                .body(ApiResponse.success("Import completed successfully", response));
+        }
     }
 }
