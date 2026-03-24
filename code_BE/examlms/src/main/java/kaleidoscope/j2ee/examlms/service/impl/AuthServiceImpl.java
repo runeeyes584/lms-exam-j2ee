@@ -47,6 +47,10 @@ public class AuthServiceImpl implements AuthService {
                                 .orElseThrow(() -> new AppException(ResponseCode.UNAUTHORIZED,
                                                 "Invalid email or password"));
 
+                if (Boolean.FALSE.equals(user.getIsActive())) {
+                        throw new AppException(ResponseCode.FORBIDDEN, "User account is disabled");
+                }
+
                 if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
                         throw new AppException(ResponseCode.UNAUTHORIZED, "Invalid email or password");
                 }
@@ -109,6 +113,10 @@ public class AuthServiceImpl implements AuthService {
 
                 User user = userRepository.findById(rt.getUserId())
                                 .orElseThrow(() -> new AppException(ResponseCode.NOT_FOUND, "User not found"));
+
+                if (Boolean.FALSE.equals(user.getIsActive())) {
+                        throw new AppException(ResponseCode.FORBIDDEN, "User account is disabled");
+                }
 
                 // tạo token mới
                 String newAccessToken = jwtUtil.generateAccessToken(

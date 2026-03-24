@@ -53,15 +53,15 @@ export const mediaService = {
 
 // Certificate Service
 export const certificateService = {
-  // Get certificate (generates if not exists)
-  get: async (userId: string, courseId: string): Promise<ApiResponse<string>> => {
-    const response = await api.get(`/certificates/${userId}/${courseId}`);
+  // Get my certificates
+  getMyCertificates: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/certificates/my');
     return response.data;
   },
 
   // Download certificate PDF
-  download: async (userId: string, courseId: string): Promise<Blob> => {
-    const response = await api.get(`/certificates/${userId}/${courseId}/download`, {
+  download: async (courseId: string): Promise<Blob> => {
+    const response = await api.get(`/certificates/${courseId}/download`, {
       responseType: 'blob',
     });
     return response.data;

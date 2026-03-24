@@ -43,6 +43,7 @@ public class UserServiceImpl implements UserService {
                 .passwordHash(passwordEncoder.encode(rawPassword))
                 .fullName(fullName)
                 .role(Role.STUDENT)
+                .isActive(true)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();

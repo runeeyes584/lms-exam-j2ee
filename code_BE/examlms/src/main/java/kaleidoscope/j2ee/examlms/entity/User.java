@@ -35,6 +35,8 @@ public class User {
 
     private Role role;
 
+    private Boolean isActive;
+
     private String phoneNumber;
 
     private String dateOfBirth;

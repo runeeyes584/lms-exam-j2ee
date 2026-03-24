@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, tokenStorage } from '@/lib/api';
 import type { LoginRequest, RegisterRequest, User } from '@/types/types';
-import { ResponseCode, isSuccess } from '@/types/types';
+import { isSuccess } from '@/types/types';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -43,8 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           setLoading(true);
           const response = await authApi.getCurrentUser();
-          if (response.code === ResponseCode.SUCCESS) {
+          if (isSuccess(response.code)) {
             setUser(response.result);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('lms_user', JSON.stringify(response.result));
+            }
           } else {
             tokenStorage.clearTokens();
             setUser(null);
@@ -154,8 +157,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     try {
       const response = await authApi.getCurrentUser();
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         setUser(response.result);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('lms_user', JSON.stringify(response.result));
+        }
       }
     } catch (error) {
       console.error('Failed to refresh user:', error);

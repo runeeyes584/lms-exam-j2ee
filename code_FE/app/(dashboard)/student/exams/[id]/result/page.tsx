@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { attemptService, ExamAttemptResponse, QuestionResult } from '@/services/attemptService';
-import { ResponseCode } from '@/types/types';
+import { isSuccess } from '@/types/types';
 
 export default function ExamResultPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
     }
     try {
       const response = await attemptService.review(attemptId);
-      if (response.code === ResponseCode.SUCCESS && response.result) {
+      if (isSuccess(response.code) && response.result) {
         setAttempt(response.result);
       } else {
         setAttempt(getMockAttempt());

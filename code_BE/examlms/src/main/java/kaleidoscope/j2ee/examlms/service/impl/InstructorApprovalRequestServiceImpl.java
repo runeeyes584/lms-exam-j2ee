@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import kaleidoscope.j2ee.examlms.dto.request.CreateInstructorRequest;
 import kaleidoscope.j2ee.examlms.dto.response.InstructorApprovalRequestResponse;
+import kaleidoscope.j2ee.examlms.dto.response.InstructorRequestUserResponse;
 import kaleidoscope.j2ee.examlms.entity.InstructorApprovalRequest;
 import kaleidoscope.j2ee.examlms.entity.User;
 import kaleidoscope.j2ee.examlms.entity.enums.InstructorRequestStatus;
@@ -104,9 +105,18 @@ public class InstructorApprovalRequestServiceImpl implements InstructorApprovalR
     }
 
     private InstructorApprovalRequestResponse mapToResponse(InstructorApprovalRequest request) {
+        User user = userRepository.findById(request.getUserId()).orElse(null);
+
         return InstructorApprovalRequestResponse.builder()
                 .id(request.getId())
                 .userId(request.getUserId())
+                .user(user == null ? null : InstructorRequestUserResponse.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .role(user.getRole())
+                        .isActive(user.getIsActive() == null ? Boolean.TRUE : user.getIsActive())
+                        .build())
                 .status(request.getStatus())
                 .note(request.getNote())
                 .createdAt(request.getCreatedAt())

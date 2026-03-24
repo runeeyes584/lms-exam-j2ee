@@ -5,14 +5,20 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import kaleidoscope.j2ee.examlms.dto.response.CertificateResponse;
 import kaleidoscope.j2ee.examlms.entity.Certificate;
+import kaleidoscope.j2ee.examlms.entity.Course;
 import kaleidoscope.j2ee.examlms.entity.UserCourse;
+import kaleidoscope.j2ee.examlms.entity.User;
 import kaleidoscope.j2ee.examlms.exception.CertificateException;
 import kaleidoscope.j2ee.examlms.repository.CertificateRepository;
+import kaleidoscope.j2ee.examlms.repository.CourseRepository;
 import kaleidoscope.j2ee.examlms.repository.UserCourseRepository;
+import kaleidoscope.j2ee.examlms.repository.UserRepository;
 import kaleidoscope.j2ee.examlms.service.CertificateService;
 import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.io.image.ImageData;
@@ -38,6 +44,8 @@ public class CertificateServiceImpl implements CertificateService {
 
         private final CertificateRepository certificateRepository;
         private final UserCourseRepository userCourseRepository;
+        private final UserRepository userRepository;
+        private final CourseRepository courseRepository;
 
         @Override
         public String generateCertificate(String userId, String courseId) {
@@ -56,9 +64,40 @@ public class CertificateServiceImpl implements CertificateService {
                                 .orElseGet(() -> createNewCertificate(userId, courseId));
         }
 
-        private String createNewCertificate(String userName, String courseName) {
+        @Override
+        public List<CertificateResponse> getMyCertificates(String userId) {
+                return certificateRepository.findByUserId(userId).stream()
+                                .map(certificate -> {
+                                        User user = userRepository.findById(certificate.getUserId()).orElse(null);
+                                        Course course = courseRepository.findById(certificate.getCourseId()).orElse(null);
+
+                                        return CertificateResponse.builder()
+                                                        .id(certificate.getId())
+                                                        .courseId(certificate.getCourseId())
+                                                        .courseName(course != null ? course.getTitle() : certificate.getCourseId())
+                                                        .studentName(user != null ? user.getFullName() : certificate.getUserId())
+                                                        .issuedAt(certificate.getIssuedAt())
+                                                        .certificateNumber(certificate.getId())
+                                                        .build();
+                                })
+                                .toList();
+        }
+
+        @Override
+        public String getCertificateFile(String userId, String courseId) {
+                return generateCertificate(userId, courseId);
+        }
+
+        private String createNewCertificate(String userId, String courseId) {
 
                 try {
+                        User user = userRepository.findById(userId)
+                                        .orElseThrow(() -> new CertificateException("User not found"));
+                        Course course = courseRepository.findById(courseId)
+                                        .orElseThrow(() -> new CertificateException("Course not found"));
+
+                        String userName = user.getFullName();
+                        String courseName = course.getTitle();
 
                         String folderPath = "certificates/";
                         new File(folderPath).mkdirs();
@@ -178,8 +217,8 @@ public class CertificateServiceImpl implements CertificateService {
 
                         // SAVE DB
                         Certificate certificate = Certificate.builder()
-                                        .userId(userName)
-                                        .courseId(courseName)
+                                        .userId(userId)
+                                        .courseId(courseId)
                                         .filePath(fullPath)
                                         .issuedAt(LocalDateTime.now())
                                         .build();

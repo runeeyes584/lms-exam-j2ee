@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PageLoading } from '@/components/ui/loading';
 import { BookOpen, FileText, Award, Users, ArrowRight, Clock, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-import { enrollmentService, examService, courseService, analyticsService, attemptService } from '@/services';
+import { enrollmentService, examService, courseService, analyticsService, attemptService, certificateService } from '@/services';
 import { isSuccess } from '@/types/types';
 
 interface DashboardStats {
@@ -32,9 +32,10 @@ export default function DashboardPage() {
     try {
       if (user?.role === 'STUDENT') {
         // Student stats
-        const [enrollments, exams] = await Promise.allSettled([
-          enrollmentService.getMyEnrollments(),
+        const [enrollments, exams, certificates] = await Promise.allSettled([
+          enrollmentService.getMyEnrollments(user.id),
           attemptService.getMyAttempts(0, 200),
+          certificateService.getMyCertificates(),
         ]);
         
         setStats({
@@ -42,7 +43,8 @@ export default function DashboardPage() {
             ? (enrollments.value.result?.length || 0) : 0,
           exams: exams.status === 'fulfilled' && isSuccess(exams.value.code)
             ? (exams.value.result?.content?.length || 0) : 0,
-          certificates: 0, // TODO: Implement when API available
+          certificates: certificates.status === 'fulfilled' && isSuccess(certificates.value.code)
+            ? (certificates.value.result?.length || 0) : 0,
           students: 0,
         });
       } else if (user?.role === 'INSTRUCTOR') {

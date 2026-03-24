@@ -100,13 +100,19 @@ api.interceptors.response.use(
       const refreshToken = tokenStorage.getRefreshToken();
       if (refreshToken) {
         try {
-          const response = await axios.post<ApiResponse<AuthTokens>>(
+          const response = await axios.post<ApiResponse<AuthResponse>>(
             `${API_BASE_URL}/auth/refresh`,
             { refreshToken }
           );
           
           if (isSuccess(response.data.code)) {
-            tokenStorage.setTokens(response.data.result);
+            tokenStorage.setTokens({
+              accessToken: response.data.result.accessToken,
+              refreshToken: response.data.result.refreshToken,
+            });
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('lms_user', JSON.stringify(response.data.result.user));
+            }
             originalRequest.headers.Authorization = `Bearer ${response.data.result.accessToken}`;
             return api(originalRequest);
           }
@@ -148,7 +154,7 @@ export const authApi = {
     return response.data;
   },
   
-  refreshToken: async (refreshToken: string): Promise<ApiResponse<AuthTokens>> => {
+  refreshToken: async (refreshToken: string): Promise<ApiResponse<AuthResponse>> => {
     const response = await api.post('/auth/refresh', { refreshToken });
     return response.data;
   },

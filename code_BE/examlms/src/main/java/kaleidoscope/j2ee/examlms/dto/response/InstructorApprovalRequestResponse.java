@@ -9,6 +9,7 @@ import lombok.Builder;
 public record InstructorApprovalRequestResponse(
                 String id,
                 String userId,
+                InstructorRequestUserResponse user,
                 InstructorRequestStatus status,
                 String note,
                 Instant createdAt,

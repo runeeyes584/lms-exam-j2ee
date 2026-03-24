@@ -55,6 +55,7 @@ public class SecurityConfig {
 
                         // profile: chỉ cần login
                         .requestMatchers("/api/users/**").authenticated()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // instructor request: student tạo request
                         .requestMatchers(HttpMethod.POST, "/api/instructor-requests").hasRole("STUDENT")

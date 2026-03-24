@@ -7,14 +7,13 @@ export interface EnrollmentRequest {
 }
 
 export interface EnrollmentResponse {
-  id: string;
-  userId: string;
   courseId: string;
-  courseName: string;
+  enrolledAt: string;
+  progressPercent: number;
+  courseName?: string;
   courseImage?: string;
   instructorName?: string;
-  enrolledAt: string;
-  progress: number;
+  progress?: number;
   completedLessons: number;
   totalLessons: number;
   lastAccessedAt?: string;
@@ -47,13 +46,21 @@ export const enrollmentService = {
   // Get user enrollments
   getByUser: async (userId: string): Promise<ApiResponse<EnrollmentResponse[]>> => {
     const response = await api.get(`/enrollments/${userId}`);
-    return response.data;
+    return {
+      ...response.data,
+      result: (response.data.result || []).map((item: any) => ({
+        ...item,
+        progressPercent: Number(item.progressPercent ?? 0),
+        progress: Number(item.progressPercent ?? 0),
+        completedLessons: 0,
+        totalLessons: 0,
+      })),
+    };
   },
 
   // Get my enrollments
-  getMyEnrollments: async (): Promise<ApiResponse<EnrollmentResponse[]>> => {
-    const response = await api.get('/enrollments/my');
-    return response.data;
+  getMyEnrollments: async (userId: string): Promise<ApiResponse<EnrollmentResponse[]>> => {
+    return enrollmentService.getByUser(userId);
   },
 };
 

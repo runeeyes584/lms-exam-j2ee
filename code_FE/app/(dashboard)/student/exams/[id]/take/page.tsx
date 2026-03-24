@@ -9,7 +9,7 @@ import { PageLoading } from '@/components/ui/loading';
 import { Clock, ChevronLeft, ChevronRight, Flag, Send, X, AlertTriangle } from 'lucide-react';
 import { examService, ExamResponse } from '@/services/examService';
 import { attemptService } from '@/services/attemptService';
-import { ResponseCode } from '@/types/types';
+import { isSuccess } from '@/types/types';
 import { toast } from 'react-hot-toast';
 
 export default function ExamTakingPage({ params }: { params: { id: string } }) {
@@ -31,14 +31,14 @@ export default function ExamTakingPage({ params }: { params: { id: string } }) {
     const initExam = async () => {
       try {
         const examRes = await examService.getById(params.id);
-        if (examRes.code === ResponseCode.SUCCESS && examRes.result) {
+        if (isSuccess(examRes.code) && examRes.result) {
           setExam(examRes.result);
           setTimeLeft(examRes.result.duration * 60);
           
           // Start attempt
           try {
             const attemptRes = await attemptService.start(params.id);
-            if (attemptRes.code === ResponseCode.SUCCESS && attemptRes.result) {
+            if (isSuccess(attemptRes.code) && attemptRes.result) {
               setAttemptId(attemptRes.result.id || null);
             }
           } catch (err) {
@@ -133,7 +133,7 @@ export default function ExamTakingPage({ params }: { params: { id: string } }) {
 
       const response = await attemptService.submit(attemptId, submitData);
       
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success('Nộp bài thành công!');
         router.push(`/student/exams/${exam.id}/result?attemptId=${response.result?.id}`);
       } else {

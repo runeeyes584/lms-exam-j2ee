@@ -5,9 +5,7 @@ import type { PageResponse } from './courseService';
 export interface AdminUserResponse extends User {
   isActive: boolean;
   createdAt: string;
-  lastLoginAt?: string;
-  enrolledCoursesCount?: number;
-  createdCoursesCount?: number;
+  updatedAt?: string;
 }
 
 export interface InstructorApprovalRequest {
@@ -19,27 +17,27 @@ export interface InstructorApprovalRequest {
 
 export interface InstructorApprovalResponse {
   id: string;
-  user: User;
-  qualifications: string;
-  experience: string;
-  specialization: string;
+  userId: string;
+  user?: User & { isActive?: boolean };
+  note?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  requestDate: string;
+  createdAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
-  rejectionReason?: string;
 }
 
 export interface DashboardStats {
-  totalUsers: number;
-  totalStudents: number;
-  totalInstructors: number;
-  totalCourses: number;
-  totalExams: number;
-  totalAttempts: number;
-  totalRevenue: number;
-  newUsersThisMonth: number;
-  activeUsersThisWeek: number;
+  totalUsers?: number;
+  totalStudents?: number;
+  totalInstructors?: number;
+  totalCourses?: number;
+  totalExams?: number;
+  totalAttempts?: number;
+  totalRevenue?: number;
+  newUsersThisMonth?: number;
+  activeUsersThisWeek?: number;
+  totalOrders?: number;
+  totalReviews?: number;
 }
 
 export interface RevenueData {
@@ -66,7 +64,7 @@ export const adminService = {
     status?: string
   ): Promise<ApiResponse<PageResponse<AdminUserResponse>>> => {
     const response = await api.get('/admin/users', {
-      params: { page, size, role, status },
+      params: { page, size, role, isActive: status === undefined ? undefined : status === 'active' },
     });
     return response.data;
   },
@@ -97,8 +95,8 @@ export const adminService = {
     return response.data;
   },
 
-  rejectInstructor: async (requestId: string, reason?: string): Promise<ApiResponse<InstructorApprovalResponse>> => {
-    const response = await api.post(`/instructor-requests/${requestId}/reject`, { reason });
+  rejectInstructor: async (requestId: string): Promise<ApiResponse<InstructorApprovalResponse>> => {
+    const response = await api.post(`/instructor-requests/${requestId}/reject`);
     return response.data;
   },
 };
