@@ -2,11 +2,13 @@ package kaleidoscope.j2ee.examlms.controller;
 
 import kaleidoscope.j2ee.examlms.service.VNPayPaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
+@Profile("!ui")
 @RequestMapping("/api/vnpay")
 @RequiredArgsConstructor
 public class VNPayPaymentController {

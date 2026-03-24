@@ -1,0 +1,177 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { authApi, tokenStorage } from '@/lib/api';
+import type { LoginRequest, RegisterRequest, User } from '@/types/types';
+import toast from 'react-hot-toast';
+
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (credentials: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    setUser,
+    setLoading,
+    setError,
+    login: loginStore,
+    logout: logoutStore,
+  } = useAuthStore();
+
+  // Initialize auth state on mount
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = tokenStorage.getAccessToken();
+      if (token && !user) {
+        try {
+          setLoading(true);
+          const response = await authApi.getCurrentUser();
+          if (response.code === 1000) {
+            setUser(response.result);
+          } else {
+            tokenStorage.clearTokens();
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Failed to fetch user:', error);
+          tokenStorage.clearTokens();
+          setUser(null);
+        } finally {
+          setLoading(false);
+          setIsInitialized(true);
+        }
+      } else {
+        setIsInitialized(true);
+      }
+    };
+
+    initAuth();
+  }, []);
+
+  const login = async (credentials: LoginRequest) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await authApi.login(credentials);
+      
+      if (response.code === 1000) {
+        const { accessToken, refreshToken, user: userData } = response.result;
+        tokenStorage.setTokens({ accessToken, refreshToken });
+        loginStore(userData);
+        
+        // Store user in localStorage for dashboard
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('lms_user', JSON.stringify(userData));
+        }
+        
+        toast.success(`Chào mừng ${userData.fullName}!`);
+        
+        // Redirect to home page
+        router.push('/');
+      } else {
+        setError(response.message);
+        toast.error(response.message || 'Đăng nhập thất bại');
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Đã có lỗi xảy ra';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (data: RegisterRequest) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await authApi.register(data);
+      
+      if (response.code === 1000) {
+        toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
+        router.push('/login');
+      } else {
+        setError(response.message);
+        toast.error(response.message || 'Đăng ký thất bại');
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Đã có lỗi xảy ra';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      setLoading(true);
+      await authApi.logout();
+      logoutStore();
+      
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('lms_user');
+      }
+      
+      toast.success('Đăng xuất thành công');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Clear local state anyway
+      logoutStore();
+      tokenStorage.clearTokens();
+      router.push('/login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const response = await authApi.getCurrentUser();
+      if (response.code === 1000) {
+        setUser(response.result);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated,
+    isLoading: isLoading || !isInitialized,
+    login,
+    register,
+    logout,
+    refreshUser,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

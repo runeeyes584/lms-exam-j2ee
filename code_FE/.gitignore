@@ -1,0 +1,45 @@
+# Các file được ignore
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Các file debug và log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Các file runtime
+.pids
+.pid
+.seed
+.pid.lock
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Storybook
+.out
+.storybook-out

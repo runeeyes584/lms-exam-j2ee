@@ -33,6 +33,9 @@ logs/
 # Direnv
 .envrc
 
+# Frontend local config (do not commit)
+code_BE/examlms/src/main/resources/static/app-config.json
+
 # Certificates / Keys
 **/*.pem
 **/*.key
