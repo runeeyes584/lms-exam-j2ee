@@ -1,0 +1,16 @@
+Type,Content,ImageUrl,Difficulty,Topics,Points,Explanation,Option1,Option2,Option3,Option4,IsCorrect1,IsCorrect2,IsCorrect3,IsCorrect4
+MULTIPLE_CHOICE,What is the capital of France?,,RECOGNIZE,"Geography,Europe",1,Paris is the capital and largest city of France,London,Paris,Berlin,Rome,FALSE,TRUE,FALSE,FALSE
+MULTIPLE_CHOICE,Which of the following are programming languages? (Select all that apply),,UNDERSTAND,"Programming,Computer Science",2,Python and Java are programming languages,Python,HTML,Java,CSS,TRUE,FALSE,TRUE,FALSE
+TRUE_FALSE,Java is a compiled language,,UNDERSTAND,"Programming,Java",1,Java compiles to bytecode which runs on JVM,TRUE,,,,,,
+TRUE_FALSE,The Earth is flat,,RECOGNIZE,Geography,1,The Earth is an oblate spheroid,FALSE,,,,,,
+FILL_IN,The chemical symbol for gold is ___,,RECOGNIZE,Chemistry,2,Au comes from Latin 'aurum',Au,,,,,,
+FILL_IN,The capital of Vietnam is ___,,RECOGNIZE,"Geography,Asia",1,Hanoi is the capital city,Hanoi,,,,,,
+MULTIPLE_CHOICE,What is 2 + 2?,,RECOGNIZE,"Math,Arithmetic",1,Basic addition operation,3,4,5,6,FALSE,TRUE,FALSE,FALSE
+MULTIPLE_CHOICE,Which HTTP methods are idempotent?,,ANALYZE,"Web Development,REST API",3,GET PUT DELETE are idempotent,GET,POST,PUT,DELETE,TRUE,FALSE,TRUE,TRUE
+TRUE_FALSE,MongoDB is a relational database,,UNDERSTAND,"Database,NoSQL",1.5,MongoDB is a NoSQL document database,FALSE,,,,,,
+FILL_IN,In Java the keyword to define a constant is ___,,APPLY,"Programming,Java",2,final keyword prevents reassignment,final,,,,,,
+MULTIPLE_CHOICE,What does REST stand for?,,UNDERSTAND,"Web Development,API",2,REST is an architectural style,Representational State Transfer,Really Simple Transfer,Remote State Transaction,Resource Exchange System,TRUE,FALSE,FALSE,FALSE
+TRUE_FALSE,Spring Boot requires XML configuration,,RECOGNIZE,"Java,Spring Boot",1,Spring Boot uses annotation-based configuration by default,FALSE,,,,,,
+FILL_IN,The default port for HTTP is ___,,RECOGNIZE,"Networking,Web",1,HTTP uses port 80 by default,80,,,,,,
+MULTIPLE_CHOICE,Which design patterns are creational patterns?,,ANALYZE,"Design Patterns,Software Engineering",3,Singleton and Factory are creational patterns,Singleton,Observer,Factory,Strategy,TRUE,FALSE,TRUE,FALSE
+TRUE_FALSE,JSON stands for JavaScript Object Notation,,RECOGNIZE,"Web Development,Data Format",1,JSON is a lightweight data interchange format,TRUE,,,,,,
