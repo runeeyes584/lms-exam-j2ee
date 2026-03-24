@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import kaleidoscope.j2ee.examlms.dto.response.ApiResponse;
 import kaleidoscope.j2ee.examlms.service.CertificateService;
-
 import lombok.RequiredArgsConstructor;
 
 @RestController

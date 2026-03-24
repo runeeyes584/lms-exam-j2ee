@@ -7,12 +7,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
 import kaleidoscope.j2ee.examlms.dto.request.ProgressUpdateRequest;
 import kaleidoscope.j2ee.examlms.dto.response.ApiResponse;
 import kaleidoscope.j2ee.examlms.dto.response.ProgressResponse;
 import kaleidoscope.j2ee.examlms.service.ProgressService;
-
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
