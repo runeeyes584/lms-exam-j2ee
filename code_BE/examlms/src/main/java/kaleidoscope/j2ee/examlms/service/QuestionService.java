@@ -3,7 +3,6 @@ package kaleidoscope.j2ee.examlms.service;
 import kaleidoscope.j2ee.examlms.dto.request.QuestionCreateRequest;
 import kaleidoscope.j2ee.examlms.dto.response.QuestionResponse;
 import kaleidoscope.j2ee.examlms.entity.DifficultyLevel;
-import kaleidoscope.j2ee.examlms.entity.Question;
 import kaleidoscope.j2ee.examlms.entity.QuestionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
