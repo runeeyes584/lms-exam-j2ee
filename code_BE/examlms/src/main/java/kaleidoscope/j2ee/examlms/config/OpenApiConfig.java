@@ -18,13 +18,14 @@ public class OpenApiConfig {
         final String securitySchemeName = "bearerAuth";
         
         return new OpenAPI()
+                .openapi("3.0.1")  // Explicitly set OpenAPI version
                 .info(new Info()
                         .title("Exam LMS API")
                         .version("1.0.0")
                         .description("REST API for Exam & Question Bank Management System")
                         .contact(new Contact()
-                                .name("Lê Anh Tiến")
-                                .email("tien@example.com"))
+                                .name("Kaleidoscope Team")
+                                .email("support@examlms.com"))
                         .license(new License()
                                 .name("MIT License")
                                 .url("https://opensource.org/licenses/MIT")))

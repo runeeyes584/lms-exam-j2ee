@@ -25,6 +25,7 @@ public class GradingDetailResponse {
     private Integer pendingQuestions;
     
     // Map: questionId -> QuestionGradeDetail
+    @Builder.Default
     private Map<String, QuestionGradeDetail> questionGrades = new HashMap<>();
     
     @Data

@@ -1,0 +1,87 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+
+# Environment Variables - IMPORTANT: Do not commit
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Certificates / Keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.cer
+*.crt
+
+# Spring local-only overrides
+application-local.properties
+application-*.local.properties
+application-*.secret.properties
+
+# JVM crash / profiler dumps
+hs_err_pid*.log
+*.hprof
+
+# Local scripts with secrets or local paths
+run-server.bat
+build-verify.bat
+cleanup-dotenv.bat
+rebuild-clean.bat
+*.bat
+*.cmd
+
+# Session Reports
+dependency-fixes-report.md
+configuration-fix-report.md
+FINAL-REPORT.md
