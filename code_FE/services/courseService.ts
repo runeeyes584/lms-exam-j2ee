@@ -19,6 +19,7 @@ export interface CourseResponse extends Course {
   enrollmentCount?: number;
   rating?: number;
   chaptersCount?: number;
+  isDeleted?: boolean;
 }
 
 export interface PageResponse<T> {
@@ -29,29 +30,47 @@ export interface PageResponse<T> {
   number: number;
 }
 
+const normalizeCourse = (course: any): CourseResponse => ({
+  ...course,
+  tags: Array.isArray(course?.tags) ? course.tags : [],
+  isPublished: Boolean(course?.isPublished),
+});
+
 export const courseService = {
   // Get all courses (public)
-  getAll: async (page = 0, size = 10): Promise<ApiResponse<PageResponse<CourseResponse>>> => {
-    const response = await api.get('/v1/courses', { params: { page, size } });
-    return response.data;
+  getAll: async (): Promise<ApiResponse<CourseResponse[]>> => {
+    const response = await api.get('/v1/courses');
+    return {
+      ...response.data,
+      result: (response.data.result || []).map(normalizeCourse),
+    };
   },
 
   // Get course by ID
   getById: async (id: string): Promise<ApiResponse<CourseResponse>> => {
     const response = await api.get(`/v1/courses/${id}`);
-    return response.data;
+    return {
+      ...response.data,
+      result: response.data.result ? normalizeCourse(response.data.result) : response.data.result,
+    };
   },
 
   // Create course (Instructor)
   create: async (data: CourseRequest): Promise<ApiResponse<CourseResponse>> => {
     const response = await api.post('/v1/courses', data);
-    return response.data;
+    return {
+      ...response.data,
+      result: response.data.result ? normalizeCourse(response.data.result) : response.data.result,
+    };
   },
 
   // Update course (Instructor)
   update: async (id: string, data: CourseRequest): Promise<ApiResponse<CourseResponse>> => {
     const response = await api.put(`/v1/courses/${id}`, data);
-    return response.data;
+    return {
+      ...response.data,
+      result: response.data.result ? normalizeCourse(response.data.result) : response.data.result,
+    };
   },
 
   // Delete course (Instructor)
@@ -61,9 +80,13 @@ export const courseService = {
   },
 
   // Get instructor's courses
-  getMyCourses: async (page = 0, size = 10): Promise<ApiResponse<PageResponse<CourseResponse>>> => {
-    const response = await api.get('/v1/courses/my-courses', { params: { page, size } });
-    return response.data;
+  getMyCourses: async (instructorId: string): Promise<ApiResponse<CourseResponse[]>> => {
+    const response = await api.get('/v1/courses');
+    const allCourses = (response.data.result || []).map(normalizeCourse);
+    return {
+      ...response.data,
+      result: allCourses.filter(course => course.instructorId === instructorId),
+    };
   },
 };
 

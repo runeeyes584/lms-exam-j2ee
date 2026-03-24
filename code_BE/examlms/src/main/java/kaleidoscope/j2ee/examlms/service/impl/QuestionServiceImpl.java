@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -121,7 +122,13 @@ public class QuestionServiceImpl implements QuestionService {
     
     @Override
     public Page<QuestionResponse> getQuestionsByCreator(String createdBy, Pageable pageable) {
-        return questionRepository.findByCreatedBy(createdBy, pageable)
+        List<String> visibleCreators = new ArrayList<>();
+        if (createdBy != null && !createdBy.isBlank()) {
+            visibleCreators.add(createdBy);
+        }
+        visibleCreators.add("excel-import");
+
+        return questionRepository.findByCreatedByIn(visibleCreators, pageable)
             .map(this::mapToResponse);
     }
     

@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Award, BookOpen, Filter, Search, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { examService } from '@/services/examService';
+import { attemptService, ExamAttemptResponse } from '@/services/attemptService';
+import { isSuccess } from '@/types/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Users, Search, Mail, BookOpen, Award, TrendingUp, Filter } from 'lucide-react';
-import api from '@/lib/api';
-import { ResponseCode, type User } from '@/types/types';
 
-interface StudentWithStats extends User {
+interface StudentWithStats {
+  id: string;
+  displayName: string;
   enrolledCourses: number;
   completedExams: number;
   avgScore: number;
@@ -31,16 +33,51 @@ export default function InstructorStudentsPage() {
 
   const fetchStudents = async () => {
     try {
-      // TODO: Khi BE có endpoint /v1/instructor/students, sử dụng:
-      // const response = await api.get('/v1/instructor/students');
-      // if (response.data.code === ResponseCode.SUCCESS) setStudents(response.data.result || []);
-      
-      // Mock data cho demo
-      setStudents([
-        { id: '1', email: 'student1@test.com', fullName: 'Nguyễn Văn A', role: 'STUDENT', enrolledCourses: 3, completedExams: 5, avgScore: 85, lastActive: new Date().toISOString() },
-        { id: '2', email: 'student2@test.com', fullName: 'Trần Thị B', role: 'STUDENT', enrolledCourses: 2, completedExams: 3, avgScore: 72, lastActive: new Date(Date.now() - 86400000).toISOString() },
-        { id: '3', email: 'student3@test.com', fullName: 'Lê Văn C', role: 'STUDENT', enrolledCourses: 4, completedExams: 8, avgScore: 91, lastActive: new Date(Date.now() - 172800000).toISOString() },
-      ]);
+      const examsResponse = await examService.getMyExams(0, 200);
+      if (!isSuccess(examsResponse.code)) {
+        setStudents([]);
+        return;
+      }
+
+      const exams = examsResponse.result?.content || [];
+      const attemptsByExam = await Promise.all(
+        exams.map(async exam => {
+          const response = await attemptService.getByExam(exam.id, 0, 200);
+          return isSuccess(response.code) ? response.result?.content || [] : [];
+        })
+      );
+
+      const examCourseMap = new Map(exams.map(exam => [exam.id, exam.courseId || exam.id]));
+      const studentMap = new Map<string, { scores: number[]; courseIds: Set<string>; lastActive?: string }>();
+
+      attemptsByExam.flat().forEach((attempt: ExamAttemptResponse) => {
+        const existing = studentMap.get(attempt.studentId) || {
+          scores: [],
+          courseIds: new Set<string>(),
+          lastActive: undefined,
+        };
+
+        existing.scores.push(Number(attempt.percentage || 0));
+        existing.courseIds.add(examCourseMap.get(attempt.examId) || attempt.examId);
+
+        const activeAt = attempt.endTime || attempt.startTime;
+        if (!existing.lastActive || new Date(activeAt).getTime() > new Date(existing.lastActive).getTime()) {
+          existing.lastActive = activeAt;
+        }
+
+        studentMap.set(attempt.studentId, existing);
+      });
+
+      setStudents(
+        Array.from(studentMap.entries()).map(([studentId, stats]) => ({
+          id: studentId,
+          displayName: `Học viên ${studentId.slice(-6)}`,
+          enrolledCourses: stats.courseIds.size,
+          completedExams: stats.scores.length,
+          avgScore: stats.scores.length > 0 ? Math.round(stats.scores.reduce((sum, score) => sum + score, 0) / stats.scores.length) : 0,
+          lastActive: stats.lastActive,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching students:', error);
       setStudents([]);
@@ -51,25 +88,28 @@ export default function InstructorStudentsPage() {
 
   if (authLoading || loading) return <PageLoading message="Đang tải danh sách học viên..." />;
 
-  const filteredStudents = students
-    .filter(s => s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || s.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredStudents = [...students]
+    .filter(student =>
+      student.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.id.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     .sort((a, b) => {
       if (sortBy === 'score') return b.avgScore - a.avgScore;
       if (sortBy === 'activity') return new Date(b.lastActive || 0).getTime() - new Date(a.lastActive || 0).getTime();
-      return a.fullName.localeCompare(b.fullName);
+      return a.displayName.localeCompare(b.displayName);
     });
 
   const stats = {
     total: students.length,
-    avgScore: students.length > 0 ? Math.round(students.reduce((sum, s) => sum + s.avgScore, 0) / students.length) : 0,
-    active: students.filter(s => s.lastActive && new Date(s.lastActive) > new Date(Date.now() - 7 * 86400000)).length,
+    avgScore: students.length > 0 ? Math.round(students.reduce((sum, student) => sum + student.avgScore, 0) / students.length) : 0,
+    active: students.filter(student => student.lastActive && new Date(student.lastActive) > new Date(Date.now() - 7 * 86400000)).length,
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Học viên của tôi</h1>
-        <p className="mt-2 text-gray-600">Quản lý và theo dõi tiến độ học viên</p>
+        <p className="mt-2 text-gray-600">Dữ liệu được tổng hợp từ attempts của các đề thi giảng viên đã tạo</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -87,7 +127,7 @@ export default function InstructorStudentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-100 p-2"><TrendingUp className="h-5 w-5 text-green-600" /></div>
+              <div className="rounded-lg bg-green-100 p-2"><Award className="h-5 w-5 text-green-600" /></div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{stats.avgScore}%</p>
                 <p className="text-sm text-gray-500">Điểm trung bình</p>
@@ -98,7 +138,7 @@ export default function InstructorStudentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-purple-100 p-2"><Award className="h-5 w-5 text-purple-600" /></div>
+              <div className="rounded-lg bg-purple-100 p-2"><BookOpen className="h-5 w-5 text-purple-600" /></div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
                 <p className="text-sm text-gray-500">Hoạt động tuần này</p>
@@ -128,7 +168,7 @@ export default function InstructorStudentsPage() {
       </Card>
 
       {filteredStudents.length === 0 ? (
-        <EmptyState icon={Users} title="Không tìm thấy học viên" description="Không có học viên nào phù hợp với tìm kiếm" />
+        <EmptyState icon={Users} title="Không có học viên" description="Backend hiện không có attempts nào để tổng hợp danh sách học viên" />
       ) : (
         <div className="space-y-3">
           {filteredStudents.map(student => (
@@ -137,11 +177,11 @@ export default function InstructorStudentsPage() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-lg font-semibold text-blue-600">
-                      {student.fullName.charAt(0).toUpperCase()}
+                      {student.displayName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{student.fullName}</h3>
-                      <p className="flex items-center gap-1 text-sm text-gray-500"><Mail className="h-3 w-3" />{student.email}</p>
+                      <h3 className="font-semibold text-gray-900">{student.displayName}</h3>
+                      <p className="text-sm text-gray-500">Mã học viên: {student.id}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">

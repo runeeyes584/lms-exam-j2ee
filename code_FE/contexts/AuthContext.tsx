@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, tokenStorage } from '@/lib/api';
 import type { LoginRequest, RegisterRequest, User } from '@/types/types';
-import { ResponseCode } from '@/types/types';
+import { ResponseCode, isSuccess } from '@/types/types';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.login(credentials);
       console.log('Login response:', response);
       
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         const { accessToken, refreshToken, user: userData } = response.result;
         console.log('Login success, user:', userData);
         tokenStorage.setTokens({ accessToken, refreshToken });
@@ -87,8 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         toast.success(`Chào mừng ${userData.fullName}!`);
         
-        // Redirect to home page
-        router.push('/');
+        // Redirect to dashboard after login
+        router.push('/dashboard');
       } else {
         console.error('Login failed with code:', response.code, response.message);
         setError(response.message);
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const response = await authApi.register(data);
       
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
         router.push('/login');
       } else {

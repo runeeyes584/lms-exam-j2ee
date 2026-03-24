@@ -11,8 +11,15 @@ import { Save, ArrowLeft, Check, ListChecks } from 'lucide-react';
 import Link from 'next/link';
 import { examService, ExamCreateRequest } from '@/services/examService';
 import { questionService, QuestionResponse } from '@/services/questionService';
-import { ResponseCode } from '@/types/types';
+import { isSuccess, type DifficultyLevel } from '@/types/types';
 import { toast } from 'react-hot-toast';
+
+const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
+  RECOGNIZE: 'Nhận biết',
+  UNDERSTAND: 'Thông hiểu',
+  APPLY: 'Vận dụng',
+  ANALYZE: 'Phân tích',
+};
 
 export default function EditExamPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -35,11 +42,13 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
     fetchData();
   }, [params.id]);
 
+  const getQuestionTopic = (question: QuestionResponse) => question.topic || question.topics?.[0] || '';
+
   const fetchData = async () => {
     try {
       // Fetch exam details
       const examRes = await examService.getById(params.id);
-      if (examRes.code === ResponseCode.SUCCESS && examRes.result) {
+      if (isSuccess(examRes.code) && examRes.result) {
         const exam = examRes.result;
         setForm({
           title: exam.title,
@@ -47,14 +56,14 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
           duration: exam.duration,
           passingScore: exam.passingScore,
           mode: exam.mode,
-          questionIds: exam.questions?.map((q: any) => q.id) || [],
+          questionIds: exam.questions?.map((q: any) => q.questionId || q.id).filter(Boolean) || [],
           courseId: exam.courseId,
         });
       }
 
       // Fetch all questions for selection if mode is MANUAL
       const questionsRes = await questionService.getMyQuestions(0, 200);
-      if (questionsRes.code === ResponseCode.SUCCESS) {
+      if (isSuccess(questionsRes.code)) {
         setQuestions(questionsRes.result?.content || []);
       }
     } catch (error) {
@@ -91,7 +100,7 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
     setSaving(true);
     try {
       const response = await examService.update(params.id, form);
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success('Cập nhật đề thi thành công!');
         router.push('/instructor/exams');
       } else {
@@ -106,13 +115,14 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
 
   const filteredQuestions = questions.filter(q => 
     q.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    q.topic.toLowerCase().includes(searchQuery.toLowerCase())
+    getQuestionTopic(q).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getDifficultyColor = (d: string) => {
-    if (d === 'EASY') return 'bg-green-100 text-green-700';
-    if (d === 'MEDIUM') return 'bg-yellow-100 text-yellow-700';
-    return 'bg-red-100 text-red-700';
+    if (d === 'RECOGNIZE') return 'bg-slate-100 text-slate-700';
+    if (d === 'UNDERSTAND') return 'bg-blue-100 text-blue-700';
+    if (d === 'APPLY') return 'bg-amber-100 text-amber-700';
+    return 'bg-rose-100 text-rose-700';
   };
 
   if (authLoading || loading) return <PageLoading message="Đang tải thông tin đề thi..." />;
@@ -234,10 +244,10 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
                           <p className={`text-sm ${isSelected ? 'font-medium text-blue-900' : 'text-gray-900'}`}>{q.content}</p>
                           <div className="flex gap-2 mt-2">
                             <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${getDifficultyColor(q.difficulty)}`}>
-                              {q.difficulty === 'EASY' ? 'Dễ' : q.difficulty === 'MEDIUM' ? 'TB' : 'Khó'}
+                              {DIFFICULTY_LABELS[q.difficulty]}
                             </span>
                             <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                              Chủ đề: {q.topic}
+                              Chủ đề: {getQuestionTopic(q)}
                             </span>
                             <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
                               {q.points} điểm

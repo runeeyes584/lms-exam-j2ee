@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { ApiResponse, AuthTokens, AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/types';
-import { ResponseCode } from '@/types/types';
+import { ResponseCode, isSuccess } from '@/types/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
@@ -19,6 +19,18 @@ const TOKEN_KEYS = {
   REFRESH_TOKEN: 'lms_refresh_token',
 } as const;
 
+// Cookie utilities for middleware auth check
+const setCookie = (name: string, value: string, days: number = 7): void => {
+  if (typeof document === 'undefined') return;
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+};
+
+const deleteCookie = (name: string): void => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+};
+
 export const tokenStorage = {
   getAccessToken: (): string | null => {
     if (typeof window === 'undefined') return null;
@@ -32,23 +44,47 @@ export const tokenStorage = {
   
   setTokens: (tokens: AuthTokens): void => {
     if (typeof window === 'undefined') return;
+    // Store in localStorage for API calls
     localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, tokens.accessToken);
     localStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN, tokens.refreshToken);
+    // Also store in cookies for middleware auth check
+    setCookie(TOKEN_KEYS.ACCESS_TOKEN, tokens.accessToken);
+    setCookie(TOKEN_KEYS.REFRESH_TOKEN, tokens.refreshToken);
   },
   
   clearTokens: (): void => {
     if (typeof window === 'undefined') return;
+    // Clear from localStorage
     localStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN);
     localStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN);
+    // Clear from cookies
+    deleteCookie(TOKEN_KEYS.ACCESS_TOKEN);
+    deleteCookie(TOKEN_KEYS.REFRESH_TOKEN);
   },
 };
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and user ID
 api.interceptors.request.use((config) => {
   const token = tokenStorage.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Add X-User-Id header from stored user data
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem('lms_user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.id) {
+          config.headers['X-User-Id'] = user.id;
+        }
+      } catch (e) {
+        // Ignore parse error
+      }
+    }
+  }
+  
   return config;
 });
 
@@ -69,7 +105,7 @@ api.interceptors.response.use(
             { refreshToken }
           );
           
-          if (response.data.code === ResponseCode.SUCCESS) {
+          if (isSuccess(response.data.code)) {
             tokenStorage.setTokens(response.data.result);
             originalRequest.headers.Authorization = `Bearer ${response.data.result.accessToken}`;
             return api(originalRequest);

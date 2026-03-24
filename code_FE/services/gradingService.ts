@@ -42,11 +42,7 @@ export interface QuestionGradeRequest {
 
 export interface ManualGradeRequest {
   attemptId: string;
-  questionGrades: {
-    questionId: string;
-    score: number;
-    feedback?: string;
-  }[];
+  questionScores: Record<string, number>;
 }
 
 export const gradingService = {

@@ -28,8 +28,9 @@ public class ExcelImportServiceImpl implements ExcelImportService {
     private final QuestionService questionService;
 
     @Override
-    public ExcelImportResponse importQuestions(MultipartFile file) {
+    public ExcelImportResponse importQuestions(MultipartFile file, String createdBy) {
         ExcelImportResponse response = new ExcelImportResponse(0, 0, 0);
+        String creator = (createdBy == null || createdBy.isBlank()) ? "excel-import" : createdBy;
 
         try (InputStream is = file.getInputStream();
              Workbook workbook = new XSSFWorkbook(is)) {
@@ -47,7 +48,7 @@ public class ExcelImportServiceImpl implements ExcelImportService {
 
                 try {
                     QuestionCreateRequest questionRequest = parseRowToQuestion(row, i);
-                    QuestionResponse savedQuestion = questionService.createQuestion(questionRequest, "excel-import");
+                    QuestionResponse savedQuestion = questionService.createQuestion(questionRequest, creator);
                     response.setSuccessCount(response.getSuccessCount() + 1);
                     response.addCreatedQuestionId(savedQuestion.getId());
                     

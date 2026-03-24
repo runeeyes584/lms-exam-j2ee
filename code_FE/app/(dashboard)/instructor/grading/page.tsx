@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { CheckCircle, Clock, Edit, Eye, Filter, GraduationCap, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { gradingService } from '@/services/gradingService';
+import { examService } from '@/services/examService';
+import { ExamAttemptResponse as AttemptResponse } from '@/services/attemptService';
+import { isSuccess } from '@/types/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GraduationCap, Search, CheckCircle, Clock, Eye, Edit, Filter } from 'lucide-react';
-import Link from 'next/link';
-import { gradingService } from '@/services/gradingService';
-import { ExamAttemptResponse as AttemptResponse } from '@/services/attemptService';
-import { ResponseCode } from '@/types/types';
 import { toast } from 'react-hot-toast';
 
 export default function GradingPage() {
   const { isLoading: authLoading } = useAuth();
   const [attempts, setAttempts] = useState<AttemptResponse[]>([]);
+  const [examTitles, setExamTitles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'graded'>('all');
@@ -27,18 +29,28 @@ export default function GradingPage() {
 
   const fetchAttempts = async () => {
     try {
-      const response = await gradingService.getPending(0, 100);
-      if (response.code === ResponseCode.SUCCESS) {
-        setAttempts(response.result?.content || []);
+      const [attemptsResponse, examsResponse] = await Promise.all([
+        gradingService.getPending(0, 200),
+        examService.getMyExams(0, 200),
+      ]);
+
+      if (isSuccess(attemptsResponse.code)) {
+        setAttempts(attemptsResponse.result?.content || []);
+      } else {
+        setAttempts([]);
+      }
+
+      if (isSuccess(examsResponse.code)) {
+        setExamTitles(
+          Object.fromEntries((examsResponse.result?.content || []).map(exam => [exam.id, exam.title]))
+        );
+      } else {
+        setExamTitles({});
       }
     } catch (error) {
       console.error('Error fetching attempts:', error);
-      // Mock data for demo
-      setAttempts([
-        { id: '1', examId: '1', studentId: '1', studentName: 'Nguyễn Văn A', examTitle: 'Kiểm tra Java cơ bản', answers: {}, startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 75, percentage: 75, status: 'AUTO_GRADED', passed: true },
-        { id: '2', examId: '1', studentId: '2', studentName: 'Trần Thị B', examTitle: 'Kiểm tra Java cơ bản', answers: {}, startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 60, percentage: 60, status: 'SUBMITTED', passed: false },
-        { id: '3', examId: '2', studentId: '3', studentName: 'Lê Văn C', examTitle: 'Thi giữa kỳ React', answers: {}, startTime: new Date().toISOString(), endTime: new Date().toISOString(), totalScore: 0, percentage: 0, status: 'SUBMITTED', passed: false },
-      ]);
+      setAttempts([]);
+      setExamTitles({});
     } finally {
       setLoading(false);
     }
@@ -47,10 +59,8 @@ export default function GradingPage() {
   const handleFinalize = async (attemptId: string) => {
     try {
       const response = await gradingService.finalize(attemptId);
-      if (response.code === ResponseCode.SUCCESS) {
-        setAttempts(prev => prev.map(a =>
-          a.id === attemptId ? { ...a, status: 'MANUAL_GRADED' } : a
-        ));
+      if (isSuccess(response.code)) {
+        setAttempts(prev => prev.filter(attempt => attempt.id !== attemptId));
         toast.success('Đã hoàn thành chấm điểm');
       } else {
         toast.error(response.message || 'Có lỗi xảy ra');
@@ -60,19 +70,30 @@ export default function GradingPage() {
     }
   };
 
+  const enrichedAttempts = useMemo(
+    () =>
+      attempts.map(attempt => ({
+        ...attempt,
+        examTitle: examTitles[attempt.examId] || `Đề thi ${attempt.examId}`,
+        studentLabel: `Học viên ${attempt.studentId.slice(-6)}`,
+      })),
+    [attempts, examTitles]
+  );
+
   if (authLoading || loading) return <PageLoading message="Đang tải danh sách chấm điểm..." />;
 
-  const filteredAttempts = attempts.filter(a => {
+  const filteredAttempts = enrichedAttempts.filter(attempt => {
     const matchesSearch =
-      (a.studentName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (a.examTitle?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+      attempt.studentLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      attempt.examTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      attempt.studentId.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filter === 'all' ||
-      (filter === 'pending' && a.status === 'SUBMITTED') ||
-      (filter === 'graded' && (a.status === 'AUTO_GRADED' || a.status === 'MANUAL_GRADED'));
+      (filter === 'pending' && attempt.status === 'SUBMITTED') ||
+      (filter === 'graded' && (attempt.status === 'AUTO_GRADED' || attempt.status === 'MANUAL_GRADED'));
     return matchesSearch && matchesFilter;
   });
 
-  const pendingCount = attempts.filter(a => a.status === 'SUBMITTED').length;
+  const pendingCount = attempts.filter(attempt => attempt.status === 'SUBMITTED').length;
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, JSX.Element> = {
@@ -89,7 +110,7 @@ export default function GradingPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Chấm điểm</h1>
-          <p className="mt-2 text-gray-600">Chấm điểm và xem kết quả thi của học viên</p>
+          <p className="mt-2 text-gray-600">Dữ liệu đang lấy từ API grading thật của backend</p>
         </div>
         {pendingCount > 0 && (
           <div className="rounded-lg bg-yellow-50 px-4 py-2 text-sm text-yellow-700">
@@ -109,10 +130,9 @@ export default function GradingPage() {
               <Input type="text" placeholder="Tìm kiếm học viên, đề thi..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             <div className="flex gap-2">
-              {(['all', 'pending', 'graded'] as const).map(f => (
-                <Button key={f} variant={filter === f ? 'default' : 'outline'} size="sm" onClick={() => setFilter(f)}>
-                  {f === 'all' ? 'Tất cả' : f === 'pending' ? 'Chờ chấm' : 'Đã chấm'}
-                  {f === 'pending' && pendingCount > 0 && <span className="ml-1 rounded-full bg-yellow-500 px-1.5 text-xs text-white">{pendingCount}</span>}
+              {(['all', 'pending', 'graded'] as const).map(value => (
+                <Button key={value} variant={filter === value ? 'default' : 'outline'} size="sm" onClick={() => setFilter(value)}>
+                  {value === 'all' ? 'Tất cả' : value === 'pending' ? 'Chờ chấm' : 'Đã chấm'}
                 </Button>
               ))}
             </div>
@@ -121,7 +141,7 @@ export default function GradingPage() {
       </Card>
 
       {filteredAttempts.length === 0 ? (
-        <EmptyState icon={GraduationCap} title="Chưa có bài thi nào" description={searchQuery ? 'Không tìm thấy bài thi phù hợp' : 'Chưa có bài thi cần chấm điểm'} />
+        <EmptyState icon={GraduationCap} title="Chưa có bài thi nào" description="API grading chưa trả về attempt nào cần hiển thị" />
       ) : (
         <div className="space-y-3">
           {filteredAttempts.map(attempt => (
@@ -130,18 +150,14 @@ export default function GradingPage() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1">
                     <div className="mb-2 flex items-center gap-3">
-                      <span className="font-semibold text-gray-900">{attempt.studentName}</span>
+                      <span className="font-semibold text-gray-900">{attempt.studentLabel}</span>
                       {getStatusBadge(attempt.status)}
-                      {attempt.status !== 'ONGOING' && (
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${attempt.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          {attempt.passed ? 'Đạt' : 'Chưa đạt'}
-                        </span>
-                      )}
                     </div>
                     <p className="text-sm text-gray-500">{attempt.examTitle}</p>
                     <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
-                      <span>Điểm: <strong>{attempt.totalScore || 0}</strong> ({attempt.percentage || 0}%)</span>
-                      <span>Nộp: {new Date(attempt.endTime || attempt.startTime).toLocaleString('vi-VN')}</span>
+                      <span>Mã học viên: {attempt.studentId}</span>
+                      <span>Điểm: <strong>{Number(attempt.totalScore || 0)}</strong></span>
+                      <span>Nộp: {new Date(attempt.submittedAt || attempt.endTime || attempt.startTime).toLocaleString('vi-VN')}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">

@@ -34,8 +34,9 @@ public interface QuestionRepository extends MongoRepository<Question, String> {
     @Query("{ 'topics': { $in: ?0 }, 'difficulty': ?1 }")
     List<Question> findByTopicsInAndDifficulty(List<String> topics, DifficultyLevel difficulty);
     
-    // Find by created by
-    Page<Question> findByCreatedBy(String createdBy, Pageable pageable);
+    // Find by creator ids
+    @Query("{ 'created_by': { $in: ?0 } }")
+    Page<Question> findByCreatedByIn(List<String> createdByValues, Pageable pageable);
     
     // Find all with pagination
     Page<Question> findAll(Pageable pageable);

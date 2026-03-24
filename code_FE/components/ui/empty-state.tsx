@@ -1,18 +1,32 @@
 import React from 'react';
-import { Inbox, Search, AlertCircle } from 'lucide-react';
+import { Inbox, Search, AlertCircle, LucideIcon } from 'lucide-react';
 import { Button } from './button';
 
 interface EmptyStateProps {
-  icon?: React.ReactNode | React.ElementType;
+  icon?: React.ReactNode | LucideIcon | React.ComponentType<{ className?: string }>;
   title: string;
   description?: string;
   action?: React.ReactNode | { label: string; onClick: () => void };
 }
 
+// Helper to check if something is a valid React component (function or forwardRef)
+const isComponentType = (icon: unknown): icon is React.ComponentType<{ className?: string }> => {
+  if (!icon) return false;
+  // Check for function component
+  if (typeof icon === 'function') return true;
+  // Check for forwardRef component (has $$typeof and render)
+  if (typeof icon === 'object' && icon !== null && '$$typeof' in icon) return true;
+  return false;
+};
+
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
-  const IconEl = icon && typeof icon === 'function'
-    ? React.createElement(icon as React.ElementType, { className: 'h-16 w-16' })
-    : icon;
+  let IconEl: React.ReactNode;
+  if (isComponentType(icon)) {
+    const IconComponent = icon as React.ComponentType<{ className?: string }>;
+    IconEl = <IconComponent className="h-16 w-16" />;
+  } else {
+    IconEl = icon as React.ReactNode;
+  }
 
   const ActionEl = action && typeof action === 'object' && 'label' in (action as object)
     ? <Button onClick={(action as { label: string; onClick: () => void }).onClick}>{(action as { label: string; onClick: () => void }).label}</Button>

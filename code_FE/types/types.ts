@@ -1,9 +1,12 @@
 // API Base Configuration
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
-// API Response Codes (match Backend ResponseCode.java)
+// API Response Codes (Backend has inconsistency: some use 0, some use 1000)
+// ApiResponseUtil.success() uses ResponseCode.SUCCESS = 0
+// ApiResponse.success() uses code = 1000
 export const ResponseCode = {
-  SUCCESS: 0,
+  SUCCESS: 1000,      // Most APIs use this
+  SUCCESS_ALT: 0,     // Some APIs (auth) use this
   ERROR: 9999,
   VALIDATION_ERROR: 1001,
   UNAUTHORIZED: 1002,
@@ -11,9 +14,14 @@ export const ResponseCode = {
   NOT_FOUND: 1004,
 } as const;
 
+// Helper to check if response is successful (handles both 0 and 1000)
+export const isSuccess = (code: number): boolean => {
+  return code === ResponseCode.SUCCESS || code === ResponseCode.SUCCESS_ALT;
+};
+
 // API Response Type (Backend standard)
 export interface ApiResponse<T> {
-  code: number;      // 0 = Success, 9999 = Error
+  code: number;      // 0 or 1000 = Success, 9999 = Error
   message: string;
   result: T;
 }
@@ -92,7 +100,7 @@ export interface Course {
 
 // Question Types
 export type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_IN';
-export type DifficultyLevel = 'EASY' | 'MEDIUM' | 'HARD';
+export type DifficultyLevel = 'RECOGNIZE' | 'UNDERSTAND' | 'APPLY' | 'ANALYZE';
 
 export interface QuestionOption {
   id: string;
@@ -103,7 +111,8 @@ export interface QuestionOption {
 export interface Question {
   id: string;
   type: QuestionType;
-  topic: string;
+  topic?: string;
+  topics: string[];
   difficulty: DifficultyLevel;
   points: number;
   content: string;

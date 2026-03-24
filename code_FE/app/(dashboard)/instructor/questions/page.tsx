@@ -9,9 +9,16 @@ import { PageLoading } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ClipboardList, Search, Plus, Edit, Trash2, Filter, Upload, FileSpreadsheet, X, Check } from 'lucide-react';
 import { questionService, QuestionResponse, QuestionCreateRequest } from '@/services/questionService';
-import { ResponseCode } from '@/types/types';
+import { ResponseCode, isSuccess } from '@/types/types';
 import { toast } from 'react-hot-toast';
 import type { DifficultyLevel, QuestionType } from '@/types/types';
+
+const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
+  RECOGNIZE: 'Nhận biết',
+  UNDERSTAND: 'Thông hiểu',
+  APPLY: 'Vận dụng',
+  ANALYZE: 'Phân tích',
+};
 
 // Modal tạo/sửa câu hỏi
 interface QuestionModalProps {
@@ -33,7 +40,7 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
   }>({
     type: 'MULTIPLE_CHOICE',
     topic: '',
-    difficulty: 'MEDIUM',
+    difficulty: 'UNDERSTAND',
     points: 10,
     content: '',
     options: [
@@ -58,7 +65,7 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
       setForm({
         type: 'MULTIPLE_CHOICE',
         topic: '',
-        difficulty: 'MEDIUM',
+        difficulty: 'UNDERSTAND',
         points: 10,
         content: '',
         options: [
@@ -128,7 +135,7 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
         response = await questionService.create(data);
       }
 
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success(editQuestion ? 'Đã cập nhật câu hỏi!' : 'Đã tạo câu hỏi mới!');
         onSuccess();
         onClose();
@@ -175,9 +182,10 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
                 onChange={(e) => setForm(prev => ({ ...prev, difficulty: e.target.value as DifficultyLevel }))}
                 className="w-full rounded-md border px-3 py-2 text-sm"
               >
-                <option value="EASY">Dễ</option>
-                <option value="MEDIUM">Trung bình</option>
-                <option value="HARD">Khó</option>
+                <option value="RECOGNIZE">{DIFFICULTY_LABELS.RECOGNIZE}</option>
+                <option value="UNDERSTAND">{DIFFICULTY_LABELS.UNDERSTAND}</option>
+                <option value="APPLY">{DIFFICULTY_LABELS.APPLY}</option>
+                <option value="ANALYZE">{DIFFICULTY_LABELS.ANALYZE}</option>
               </select>
             </div>
           </div>
@@ -258,9 +266,13 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
 }
 
 export default function QuestionsPage() {
+  const PAGE_SIZE = 50;
   const { isLoading: authLoading } = useAuth();
   const [questions, setQuestions] = useState<QuestionResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyLevel | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
@@ -270,23 +282,36 @@ export default function QuestionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchQuestions();
-  }, []);
+    fetchQuestions(currentPage);
+  }, [currentPage]);
 
-  const fetchQuestions = async () => {
+  const getQuestionTopic = (question: QuestionResponse) => question.topic || question.topics?.[0] || '';
+
+  const fetchQuestions = async (page = currentPage) => {
+    console.log('[Questions] Fetching questions...');
+    setLoading(true);
     try {
-      const response = await questionService.getMyQuestions(0, 100);
-      if (response.code === ResponseCode.SUCCESS) {
+      const response = await questionService.getMyQuestions(page, PAGE_SIZE);
+      console.log('[Questions] API Response:', response);
+      if (isSuccess(response.code)) {
+        console.log('[Questions] Success - content:', response.result?.content);
         setQuestions(response.result?.content || []);
+        setTotalQuestions(response.result?.totalElements || 0);
+        setTotalPages(response.result?.totalPages || 0);
+      } else {
+        console.log('[Questions] Failed - code:', response.code, 'message:', response.message);
       }
-    } catch (error) {
-      console.error('Error fetching questions:', error);
+    } catch (error: any) {
+      console.error('[Questions] Error fetching questions:', error);
+      console.error('[Questions] Error response:', error.response?.data);
       // Mock data for demo
       setQuestions([
-        { id: '1', type: 'MULTIPLE_CHOICE', topic: 'Java Basics', difficulty: 'EASY', points: 10, content: 'Java là ngôn ngữ lập trình gì?', options: [{ id: '1', text: 'Compiled', isCorrect: false }, { id: '2', text: 'Interpreted', isCorrect: false }, { id: '3', text: 'Both', isCorrect: true }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '2', type: 'TRUE_FALSE', topic: 'React', difficulty: 'MEDIUM', points: 5, content: 'React là một framework?', options: [{ id: '1', text: 'True', isCorrect: false }, { id: '2', text: 'False', isCorrect: true }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '3', type: 'MULTIPLE_CHOICE', topic: 'JavaScript', difficulty: 'HARD', points: 15, content: 'Closures trong JavaScript là gì?', options: [{ id: '1', text: 'Function within function', isCorrect: true }, { id: '2', text: 'Loop', isCorrect: false }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '1', type: 'MULTIPLE_CHOICE', topic: 'Java Basics', topics: ['Java Basics'], difficulty: 'RECOGNIZE', points: 10, content: 'Java là ngôn ngữ lập trình gì?', options: [{ id: '1', text: 'Compiled', isCorrect: false }, { id: '2', text: 'Interpreted', isCorrect: false }, { id: '3', text: 'Both', isCorrect: true }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '2', type: 'TRUE_FALSE', topic: 'React', topics: ['React'], difficulty: 'UNDERSTAND', points: 5, content: 'React là một framework?', options: [{ id: '1', text: 'True', isCorrect: false }, { id: '2', text: 'False', isCorrect: true }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '3', type: 'MULTIPLE_CHOICE', topic: 'JavaScript', topics: ['JavaScript'], difficulty: 'ANALYZE', points: 15, content: 'Closures trong JavaScript là gì?', options: [{ id: '1', text: 'Function within function', isCorrect: true }, { id: '2', text: 'Loop', isCorrect: false }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       ]);
+      setTotalQuestions(3);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -296,8 +321,13 @@ export default function QuestionsPage() {
     if (!confirm('Bạn có chắc muốn xóa câu hỏi này?')) return;
     try {
       const response = await questionService.delete(questionId);
-      if (response.code === ResponseCode.SUCCESS) {
-        setQuestions(prev => prev.filter(q => q.id !== questionId));
+      if (isSuccess(response.code)) {
+        const nextPage = questions.length === 1 && currentPage > 0 ? currentPage - 1 : currentPage;
+        if (nextPage !== currentPage) {
+          setCurrentPage(nextPage);
+        } else {
+          fetchQuestions(nextPage);
+        }
         toast.success('Đã xóa câu hỏi');
       } else {
         toast.error(response.message || 'Không thể xóa câu hỏi');
@@ -321,6 +351,8 @@ export default function QuestionsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('[Questions] Import file:', file.name, 'size:', file.size, 'type:', file.type);
+
     // Validate file type
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       toast.error('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
@@ -329,19 +361,26 @@ export default function QuestionsPage() {
 
     setImporting(true);
     try {
+      console.log('[Questions] Calling import API...');
       const response = await questionService.importFromExcel(file);
-      if (response.code === ResponseCode.SUCCESS) {
+      console.log('[Questions] Import response:', response);
+      if (isSuccess(response.code)) {
         const result = response.result;
         toast.success(`Import thành công ${result.successCount}/${result.totalRows} câu hỏi`);
-        if (result.failedCount > 0) {
-          console.error('Import errors:', result.errors);
+        if (result.failureCount > 0) {
+          console.error('[Questions] Import errors:', result.errors);
+          toast.error(`Có ${result.failureCount} dòng lỗi. Xem console để biết chi tiết.`);
         }
         // Refresh list
-        fetchQuestions();
+        setCurrentPage(0);
+        fetchQuestions(0);
       } else {
+        console.error('[Questions] Import failed:', response);
         toast.error(response.message || 'Import thất bại');
       }
     } catch (error: any) {
+      console.error('[Questions] Import error:', error);
+      console.error('[Questions] Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Không thể import file');
     } finally {
       setImporting(false);
@@ -354,22 +393,33 @@ export default function QuestionsPage() {
   if (authLoading || loading) return <PageLoading message="Đang tải ngân hàng câu hỏi..." />;
 
   const filteredQuestions = questions.filter(q => {
-    const matchesSearch = q.content.toLowerCase().includes(searchQuery.toLowerCase()) || q.topic.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = q.content.toLowerCase().includes(searchQuery.toLowerCase()) || getQuestionTopic(q).toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDifficulty = difficultyFilter === 'all' || q.difficulty === difficultyFilter;
     const matchesType = typeFilter === 'all' || q.type === typeFilter;
     return matchesSearch && matchesDifficulty && matchesType;
   });
 
   const getDifficultyBadge = (difficulty: DifficultyLevel) => {
-    const colors: Record<DifficultyLevel, string> = { EASY: 'bg-green-100 text-green-700', MEDIUM: 'bg-yellow-100 text-yellow-700', HARD: 'bg-red-100 text-red-700' };
-    const labels: Record<DifficultyLevel, string> = { EASY: 'Dễ', MEDIUM: 'Trung bình', HARD: 'Khó' };
-    return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[difficulty]}`}>{labels[difficulty]}</span>;
+    const colors: Record<DifficultyLevel, string> = {
+      RECOGNIZE: 'bg-slate-100 text-slate-700',
+      UNDERSTAND: 'bg-blue-100 text-blue-700',
+      APPLY: 'bg-amber-100 text-amber-700',
+      ANALYZE: 'bg-rose-100 text-rose-700',
+    };
+    return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[difficulty]}`}>{DIFFICULTY_LABELS[difficulty]}</span>;
   };
 
   const getTypeBadge = (type: QuestionType) => {
     const labels: Record<QuestionType, string> = { MULTIPLE_CHOICE: 'Trắc nghiệm', TRUE_FALSE: 'Đúng/Sai', FILL_IN: 'Điền khuyết' };
     return <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">{labels[type]}</span>;
   };
+
+  const visiblePages = (() => {
+    if (totalPages <= 1) return [];
+    const start = Math.max(0, Math.min(currentPage - 2, totalPages - 5));
+    const end = Math.min(totalPages, start + 5);
+    return Array.from({ length: end - start }, (_, index) => start + index);
+  })();
 
   return (
     <div className="space-y-6">
@@ -406,9 +456,10 @@ export default function QuestionsPage() {
             </div>
             <select value={difficultyFilter} onChange={(e) => setDifficultyFilter(e.target.value as DifficultyLevel | 'all')} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
               <option value="all">Tất cả độ khó</option>
-              <option value="EASY">Dễ</option>
-              <option value="MEDIUM">Trung bình</option>
-              <option value="HARD">Khó</option>
+              <option value="RECOGNIZE">{DIFFICULTY_LABELS.RECOGNIZE}</option>
+              <option value="UNDERSTAND">{DIFFICULTY_LABELS.UNDERSTAND}</option>
+              <option value="APPLY">{DIFFICULTY_LABELS.APPLY}</option>
+              <option value="ANALYZE">{DIFFICULTY_LABELS.ANALYZE}</option>
             </select>
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as QuestionType | 'all')} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
               <option value="all">Tất cả loại</option>
@@ -430,11 +481,11 @@ export default function QuestionsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-gray-500">#{idx + 1}</span>
+                      <span className="font-medium text-gray-500">#{currentPage * PAGE_SIZE + idx + 1}</span>
                       {getDifficultyBadge(q.difficulty)}
                       {getTypeBadge(q.type)}
                       <span className="text-sm text-gray-500">{q.points} điểm</span>
-                      <span className="text-sm text-gray-400">• {q.topic}</span>
+                      <span className="text-sm text-gray-400">• {getQuestionTopic(q)}</span>
                     </div>
                     <p className="text-gray-900 line-clamp-2">{q.content}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -456,9 +507,47 @@ export default function QuestionsPage() {
         </div>
       )}
 
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+            disabled={currentPage === 0}
+          >
+            Trước
+          </Button>
+          {visiblePages.map(page => (
+            <Button
+              key={page}
+              variant={page === currentPage ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCurrentPage(page)}
+            >
+              {page + 1}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
+            disabled={currentPage >= totalPages - 1}
+          >
+            Sau
+          </Button>
+        </div>
+      )}
+
       <div className="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-600">
-        Tổng cộng: <strong>{filteredQuestions.length}</strong> câu hỏi
+        Tổng cộng: <strong>{totalQuestions}</strong> câu hỏi
+        {totalPages > 0 && (
+          <span> | Trang <strong>{currentPage + 1}</strong>/<strong>{totalPages}</strong> | 50 câu hỏi/trang</span>
+        )}
       </div>
+
+      {false && (<div className="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-600">
+        Tổng cộng: <strong>{filteredQuestions.length}</strong> câu hỏi
+      </div>)}
 
       {/* Modal tạo/sửa câu hỏi */}
       <QuestionModal

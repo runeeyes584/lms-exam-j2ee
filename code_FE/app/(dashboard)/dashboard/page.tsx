@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { PageLoading } from '@/components/ui/loading';
 import { BookOpen, FileText, Award, Users, ArrowRight, Clock, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-import { enrollmentService, examService, courseService, analyticsService } from '@/services';
-import { ResponseCode } from '@/types/types';
+import { enrollmentService, examService, courseService, analyticsService, attemptService } from '@/services';
+import { isSuccess } from '@/types/types';
 
 interface DashboardStats {
   courses: number;
@@ -34,28 +34,28 @@ export default function DashboardPage() {
         // Student stats
         const [enrollments, exams] = await Promise.allSettled([
           enrollmentService.getMyEnrollments(),
-          examService.getMyAttempts(),
+          attemptService.getMyAttempts(0, 200),
         ]);
         
         setStats({
-          courses: enrollments.status === 'fulfilled' && enrollments.value.code === ResponseCode.SUCCESS 
+          courses: enrollments.status === 'fulfilled' && isSuccess(enrollments.value.code)
             ? (enrollments.value.result?.length || 0) : 0,
-          exams: exams.status === 'fulfilled' && exams.value.code === ResponseCode.SUCCESS 
-            ? (exams.value.result?.length || 0) : 0,
+          exams: exams.status === 'fulfilled' && isSuccess(exams.value.code)
+            ? (exams.value.result?.content?.length || 0) : 0,
           certificates: 0, // TODO: Implement when API available
           students: 0,
         });
       } else if (user?.role === 'INSTRUCTOR') {
         // Instructor stats
         const [courses, exams] = await Promise.allSettled([
-          courseService.getMyCourses(),
-          examService.getInstructorExams(),
+          courseService.getMyCourses(user.id),
+          examService.getInstructorExams(0, 200),
         ]);
         
         setStats({
-          courses: courses.status === 'fulfilled' && courses.value.code === ResponseCode.SUCCESS 
-            ? (courses.value.result?.content?.length || 0) : 0,
-          exams: exams.status === 'fulfilled' && exams.value.code === ResponseCode.SUCCESS 
+          courses: courses.status === 'fulfilled' && isSuccess(courses.value.code)
+            ? (courses.value.result?.length || 0) : 0,
+          exams: exams.status === 'fulfilled' && isSuccess(exams.value.code)
             ? (exams.value.result?.content?.length || 0) : 0,
           certificates: 0,
           students: 0, // TODO: Implement when API available
@@ -63,7 +63,7 @@ export default function DashboardPage() {
       } else if (user?.role === 'ADMIN') {
         // Admin stats
         const dashboardResponse = await analyticsService.getDashboard();
-        if (dashboardResponse.code === ResponseCode.SUCCESS && dashboardResponse.result) {
+        if (isSuccess(dashboardResponse.code) && dashboardResponse.result) {
           setStats({
             courses: dashboardResponse.result.totalCourses || 0,
             exams: dashboardResponse.result.totalExams || 0,

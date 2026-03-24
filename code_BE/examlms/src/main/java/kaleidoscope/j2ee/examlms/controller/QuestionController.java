@@ -139,7 +139,8 @@ public class QuestionController {
                description = "Upload an Excel file (.xlsx) to bulk import questions. " +
                            "Returns success/failure counts and error details.")
     public ResponseEntity<ApiResponse<ExcelImportResponse>> importQuestionsFromExcel(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
         
         // Validate file
         if (file.isEmpty()) {
@@ -153,7 +154,7 @@ public class QuestionController {
                 .body(ApiResponse.error("Only .xlsx files are supported"));
         }
         
-        ExcelImportResponse response = excelImportService.importQuestions(file);
+        ExcelImportResponse response = excelImportService.importQuestions(file, userId);
         
         if (response.getFailureCount() > 0 && response.getSuccessCount() == 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
