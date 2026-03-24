@@ -14,6 +14,13 @@ public class ApiResponse<T> {
     private String message;
     private T result;
 
+    /** Convenience constructor used by controllers: new ApiResponse<>(true/false, "msg", data) */
+    public ApiResponse(boolean success, String message, T result) {
+        this.code = success ? 1000 : 9999;
+        this.message = message;
+        this.result = result;
+    }
+
     public static <T> ApiResponse<T> success(T data) {
         return new ApiResponse<>(1000, "Success", data);
     }

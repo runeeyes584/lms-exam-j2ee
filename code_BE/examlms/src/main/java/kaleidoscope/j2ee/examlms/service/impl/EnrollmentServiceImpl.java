@@ -52,4 +52,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                         .build())
                 .toList();
     }
+
+    @Override
+    public boolean hasUserPurchasedCourse(String userId, String courseId) {
+        return repository.findByUserIdAndCourseId(userId, courseId).isPresent();
+    }
 }

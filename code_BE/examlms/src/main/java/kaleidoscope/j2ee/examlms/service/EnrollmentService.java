@@ -8,4 +8,6 @@ public interface EnrollmentService {
     void enroll(String userId, String courseId);
 
     List<EnrollmentResponse> getMyCourses(String userId);
+
+    boolean hasUserPurchasedCourse(String userId, String courseId);
 }
