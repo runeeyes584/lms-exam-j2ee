@@ -1,9 +1,19 @@
 // API Base Configuration
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
+// API Response Codes (match Backend ResponseCode.java)
+export const ResponseCode = {
+  SUCCESS: 0,
+  ERROR: 9999,
+  VALIDATION_ERROR: 1001,
+  UNAUTHORIZED: 1002,
+  FORBIDDEN: 1003,
+  NOT_FOUND: 1004,
+} as const;
+
 // API Response Type (Backend standard)
 export interface ApiResponse<T> {
-  code: number;      // 1000 = Success, 9999 = Error
+  code: number;      // 0 = Success, 9999 = Error
   message: string;
   result: T;
 }

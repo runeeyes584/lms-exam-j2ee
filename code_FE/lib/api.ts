@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { ApiResponse, AuthTokens, AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/types';
+import { ResponseCode } from '@/types/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
@@ -68,7 +69,7 @@ api.interceptors.response.use(
             { refreshToken }
           );
           
-          if (response.data.code === 1000) {
+          if (response.data.code === ResponseCode.SUCCESS) {
             tokenStorage.setTokens(response.data.result);
             originalRequest.headers.Authorization = `Bearer ${response.data.result.accessToken}`;
             return api(originalRequest);

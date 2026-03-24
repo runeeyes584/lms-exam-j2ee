@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, tokenStorage } from '@/lib/api';
 import type { LoginRequest, RegisterRequest, User } from '@/types/types';
+import { ResponseCode } from '@/types/types';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           setLoading(true);
           const response = await authApi.getCurrentUser();
-          if (response.code === 1000) {
+          if (response.code === ResponseCode.SUCCESS) {
             setUser(response.result);
           } else {
             tokenStorage.clearTokens();
@@ -69,10 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
+      console.log('Login request:', credentials);
       const response = await authApi.login(credentials);
+      console.log('Login response:', response);
       
-      if (response.code === 1000) {
+      if (response.code === ResponseCode.SUCCESS) {
         const { accessToken, refreshToken, user: userData } = response.result;
+        console.log('Login success, user:', userData);
         tokenStorage.setTokens({ accessToken, refreshToken });
         loginStore(userData);
         
@@ -86,11 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Redirect to home page
         router.push('/');
       } else {
+        console.error('Login failed with code:', response.code, response.message);
         setError(response.message);
         toast.error(response.message || 'Đăng nhập thất bại');
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Đã có lỗi xảy ra';
+      console.error('Login error:', error);
+      console.error('Error response:', error.response);
+      const errorMessage = error.response?.data?.message || error.message || 'Đã có lỗi xảy ra';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -105,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const response = await authApi.register(data);
       
-      if (response.code === 1000) {
+      if (response.code === ResponseCode.SUCCESS) {
         toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
         router.push('/login');
       } else {
@@ -147,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     try {
       const response = await authApi.getCurrentUser();
-      if (response.code === 1000) {
+      if (response.code === ResponseCode.SUCCESS) {
         setUser(response.result);
       }
     } catch (error) {
