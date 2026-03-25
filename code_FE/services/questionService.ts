@@ -178,9 +178,7 @@ export const questionService = {
     const formData = new FormData();
     formData.append('file', file);
     console.log('[questionService] Sending FormData to /questions/import/excel');
-    const response = await api.post('/questions/import/excel', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await api.post('/questions/import/excel', formData);
     console.log('[questionService] importFromExcel response:', response.data);
     return response.data;
   },

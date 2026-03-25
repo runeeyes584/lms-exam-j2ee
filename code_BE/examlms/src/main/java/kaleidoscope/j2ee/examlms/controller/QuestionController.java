@@ -149,7 +149,7 @@ public class QuestionController {
         }
         
         String filename = file.getOriginalFilename();
-        if (filename == null || !filename.endsWith(".xlsx")) {
+        if (filename == null || !filename.toLowerCase().endsWith(".xlsx")) {
             return ResponseEntity.badRequest()
                 .body(ApiResponse.error("Only .xlsx files are supported"));
         }

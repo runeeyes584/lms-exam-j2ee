@@ -352,10 +352,11 @@ export default function QuestionsPage() {
     if (!file) return;
 
     console.log('[Questions] Import file:', file.name, 'size:', file.size, 'type:', file.type);
+    const lowerName = file.name.toLowerCase();
 
     // Validate file type
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      toast.error('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
+    if (!lowerName.endsWith('.xlsx')) {
+      toast.error('Vui lòng chọn file Excel (.xlsx)');
       return;
     }
 
@@ -432,7 +433,7 @@ export default function QuestionsPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx"
             onChange={handleImportExcel}
             className="hidden"
           />
@@ -559,3 +560,4 @@ export default function QuestionsPage() {
     </div>
   );
 }
+

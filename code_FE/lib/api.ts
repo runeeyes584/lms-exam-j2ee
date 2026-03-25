@@ -65,6 +65,11 @@ export const tokenStorage = {
 
 // Request interceptor to add auth token and user ID
 api.interceptors.request.use((config) => {
+  // Let the browser set multipart boundary automatically for FormData.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+
   const token = tokenStorage.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
