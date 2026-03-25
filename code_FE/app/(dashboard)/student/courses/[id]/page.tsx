@@ -1,20 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
-import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronRight,
-  Flag,
-  MessageSquare,
-  NotebookPen,
-  Plus,
-} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { certificateService, commentService } from '@/services';
 import {
   chapterService,
   courseService,
@@ -24,8 +13,17 @@ import {
   type LessonResponse,
 } from '@/services/courseService';
 import { progressService } from '@/services/enrollmentService';
-import { certificateService } from '@/services';
 import { isSuccess } from '@/types/types';
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Flag,
+  MessageSquare,
+  Plus,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
 interface ExtendedLesson extends LessonResponse {
@@ -39,18 +37,12 @@ interface ExtendedChapter extends ChapterResponse {
 
 interface DiscussionItem {
   id: string;
-  message: string;
+  content: string;
   createdAt: string;
   authorName: string;
 }
 
-interface NoteItem {
-  id: string;
-  content: string;
-  createdAt: string;
-}
-
-type LearningTab = 'course' | 'progress' | 'important' | 'discussion' | 'notes';
+type LearningTab = 'course' | 'progress' | 'important' | 'discussion';
 type WeeklyGoal = 'normal' | 'regular' | 'intensive';
 
 const tabs: Array<{ key: LearningTab; label: string }> = [
@@ -58,7 +50,6 @@ const tabs: Array<{ key: LearningTab; label: string }> = [
   { key: 'progress', label: 'Tiến độ' },
   { key: 'important', label: 'Ngày quan trọng' },
   { key: 'discussion', label: 'Thảo luận' },
-  { key: 'notes', label: 'Ghi chú' },
 ];
 
 const goalOptions: Array<{ key: WeeklyGoal; title: string; subtitle: string; lessonsPerWeek: number }> = [
@@ -79,8 +70,6 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
 
   const [discussionDraft, setDiscussionDraft] = useState('');
   const [discussions, setDiscussions] = useState<DiscussionItem[]>([]);
-  const [noteDraft, setNoteDraft] = useState('');
-  const [notes, setNotes] = useState<NoteItem[]>([]);
   const [claimingCertificate, setClaimingCertificate] = useState(false);
 
   useEffect(() => {
@@ -94,28 +83,10 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const discussionKey = `course-discussion-${params.id}`;
-    const noteKey = `course-notes-${params.id}`;
     const goalKey = `course-goal-${params.id}`;
 
-    const rawDiscussions = window.localStorage.getItem(discussionKey);
-    const rawNotes = window.localStorage.getItem(noteKey);
     const rawGoal = window.localStorage.getItem(goalKey) as WeeklyGoal | null;
 
-    if (rawDiscussions) {
-      try {
-        setDiscussions(JSON.parse(rawDiscussions));
-      } catch {
-        setDiscussions([]);
-      }
-    }
-    if (rawNotes) {
-      try {
-        setNotes(JSON.parse(rawNotes));
-      } catch {
-        setNotes([]);
-      }
-    }
     if (rawGoal && goalOptions.some(item => item.key === rawGoal)) {
       setGoal(rawGoal);
     }
@@ -123,18 +94,13 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(`course-discussion-${params.id}`, JSON.stringify(discussions));
-  }, [discussions, params.id]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(`course-notes-${params.id}`, JSON.stringify(notes));
-  }, [notes, params.id]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
     window.localStorage.setItem(`course-goal-${params.id}`, goal);
   }, [goal, params.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'discussion' || !user?.id) return;
+    void fetchDiscussionsFromApi(user.id);
+  }, [activeTab, params.id, user?.id]);
 
   const fetchCourseData = async () => {
     try {
@@ -187,6 +153,10 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
         isExpanded: index === 0,
       }));
       setChapters(mapped);
+
+      if (user?.id) {
+        await fetchDiscussionsFromApi(user.id);
+      }
     } catch (error) {
       console.error('Error fetching learning page:', error);
       toast.error('Có lỗi xảy ra khi tải trang học tập');
@@ -248,29 +218,50 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
     setChapters(prev => prev.map(ch => ({ ...ch, isExpanded: shouldExpand })));
   };
 
-  const addDiscussion = () => {
-    const message = discussionDraft.trim();
-    if (!message) return;
-    const item: DiscussionItem = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      message,
-      createdAt: new Date().toISOString(),
-      authorName: user?.fullName || 'Bạn',
-    };
-    setDiscussions(prev => [item, ...prev]);
-    setDiscussionDraft('');
-  };
+  async function fetchDiscussionsFromApi(userId: string) {
+    try {
+      const response = await commentService.getByCourse(params.id, undefined, 0, 50);
+      if (!isSuccess(response.code)) {
+        setDiscussions([]);
+        return;
+      }
 
-  const addNote = () => {
-    const content = noteDraft.trim();
-    if (!content) return;
-    const item: NoteItem = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      content,
-      createdAt: new Date().toISOString(),
-    };
-    setNotes(prev => [item, ...prev]);
-    setNoteDraft('');
+      const mapped: DiscussionItem[] = (response.result?.content || []).map((comment) => ({
+        id: comment.id,
+        content: comment.content || '',
+        createdAt: comment.createdAt,
+        authorName: comment.userName || (comment.userId === userId ? user?.fullName || 'Bạn' : 'Ẩn danh'),
+      }));
+      setDiscussions(mapped);
+    } catch (error) {
+      console.error('Error fetching discussions:', error);
+      setDiscussions([]);
+    }
+  }
+
+  const addDiscussion = async () => {
+    const content = discussionDraft.trim();
+    if (!content || !user?.id) return;
+
+    try {
+      const response = await commentService.create({
+        courseId: params.id,
+        userId: user.id,
+        userName: user.fullName,
+        content,
+      });
+
+      if (!isSuccess(response.code)) {
+        toast.error(response.message || 'Không thể gửi thảo luận');
+        return;
+      }
+
+      setDiscussionDraft('');
+      await fetchDiscussionsFromApi(user.id);
+      toast.success('Đã gửi thảo luận');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Không thể gửi thảo luận');
+    }
   };
 
   const onStartCourse = () => {
@@ -484,9 +475,11 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
             <div className="space-y-4 rounded border bg-white p-6">
               <h2 className="text-2xl font-semibold text-gray-900">Thảo luận khóa học</h2>
               <div className="flex gap-2">
-                <Input
+                <textarea
                   value={discussionDraft}
                   onChange={e => setDiscussionDraft(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
                   placeholder="Nhập câu hỏi hoặc ý kiến của bạn..."
                 />
                 <Button onClick={addDiscussion}>Gửi</Button>
@@ -501,35 +494,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                         <span>{item.authorName}</span>
                         <span>{new Date(item.createdAt).toLocaleString('vi-VN')}</span>
                       </div>
-                      <p className="text-sm text-gray-800">{item.message}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'notes' && (
-            <div className="space-y-4 rounded border bg-white p-6">
-              <h2 className="text-2xl font-semibold text-gray-900">Ghi chú cá nhân</h2>
-              <textarea
-                value={noteDraft}
-                onChange={e => setNoteDraft(e.target.value)}
-                rows={4}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="Ghi chú của bạn về nội dung đang học..."
-              />
-              <div className="flex justify-end">
-                <Button onClick={addNote}>Lưu ghi chú</Button>
-              </div>
-              <div className="space-y-3">
-                {notes.length === 0 ? (
-                  <p className="rounded border border-dashed p-4 text-sm text-gray-500">Bạn chưa có ghi chú nào.</p>
-                ) : (
-                  notes.map(item => (
-                    <div key={item.id} className="rounded border p-4">
-                      <div className="mb-2 text-xs text-gray-500">{new Date(item.createdAt).toLocaleString('vi-VN')}</div>
-                      <p className="whitespace-pre-wrap text-sm text-gray-800">{item.content}</p>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{item.content}</p>
                     </div>
                   ))
                 )}
@@ -567,15 +532,8 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
           <div className="rounded border bg-white p-6">
             <h3 className="text-4xl font-semibold text-gray-900">Công cụ Khóa học</h3>
             <button
-              onClick={() => setActiveTab('notes')}
-              className="mt-3 flex items-center gap-2 text-sm text-blue-700 hover:underline"
-            >
-              <NotebookPen className="h-4 w-4" />
-              Mở ghi chú nhanh
-            </button>
-            <button
               onClick={() => setActiveTab('discussion')}
-              className="mt-2 flex items-center gap-2 text-sm text-blue-700 hover:underline"
+              className="mt-3 flex items-center gap-2 text-sm text-blue-700 hover:underline"
             >
               <MessageSquare className="h-4 w-4" />
               Vào thảo luận

@@ -1,52 +1,75 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
-import { EmptyState } from '@/components/ui/empty-state';
-import { MessageSquare, Search, Plus, ChevronRight, Clock, User, MessageCircle, ThumbsUp } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { commentService, courseService, enrollmentService, type DiscussionViewModel } from '@/services';
+import { isSuccess } from '@/types/types';
+import { ChevronRight, Clock, MessageCircle, MessageSquare, Plus, Search, ThumbsUp, User } from 'lucide-react';
 import Link from 'next/link';
-import { commentService } from '@/services';
-import { ResponseCode } from '@/types/types';
-
-interface Discussion {
-  id: string;
-  title: string;
-  content: string;
-  author: { id: string; fullName: string; avatarUrl?: string };
-  courseId?: string;
-  courseName?: string;
-  createdAt: string;
-  replyCount: number;
-  likeCount: number;
-  lastReplyAt?: string;
-}
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function DiscussionsPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const searchParams = useSearchParams();
+  const [discussions, setDiscussions] = useState<DiscussionViewModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchDiscussions();
-  }, []);
+    void fetchDiscussions();
+  }, [user?.id, searchParams]);
 
   const fetchDiscussions = async () => {
     try {
-      // TODO: Khi BE có endpoint /discussions hoặc /comments chung, sử dụng:
-      // const response = await commentService.getByCourse('global', undefined, 0, 20);
-      // if (response.code === ResponseCode.SUCCESS) setDiscussions(response.result?.content || []);
-      
-      // Mock data cho demo
-      setDiscussions([
-        { id: '1', title: 'Cách học Java hiệu quả?', content: 'Mình mới bắt đầu học Java, mọi người có kinh nghiệm gì không?', author: { id: '1', fullName: 'Nguyễn Văn A' }, courseName: 'Java cơ bản', createdAt: new Date().toISOString(), replyCount: 12, likeCount: 25, lastReplyAt: new Date().toISOString() },
-        { id: '2', title: 'Lỗi khi deploy React app', content: 'Mình gặp lỗi khi deploy lên Vercel, ai giúp với?', author: { id: '2', fullName: 'Trần Thị B' }, courseName: 'React & NextJS', createdAt: new Date(Date.now() - 86400000).toISOString(), replyCount: 8, likeCount: 15, lastReplyAt: new Date(Date.now() - 3600000).toISOString() },
-        { id: '3', title: 'Tài liệu học Spring Boot', content: 'Ai có tài liệu học Spring Boot hay không? Share cho mình với!', author: { id: '3', fullName: 'Lê Văn C' }, createdAt: new Date(Date.now() - 172800000).toISOString(), replyCount: 20, likeCount: 45 },
-      ]);
+      if (!user?.id) {
+        setDiscussions([]);
+        return;
+      }
+
+      const courseNameMap: Record<string, string> = {};
+      const enrollmentsResponse = await enrollmentService.getMyEnrollments(user.id);
+      const enrollments = enrollmentsResponse.result || [];
+      enrollments.forEach((enrollment) => {
+        if (enrollment.courseId && enrollment.courseName) {
+          courseNameMap[enrollment.courseId] = enrollment.courseName;
+        }
+      });
+
+      const enrolledCourseIds = new Set(enrollments.map((enrollment) => enrollment.courseId).filter(Boolean));
+
+      const requestedCourseId = searchParams.get('courseId');
+      const selectedCourseId =
+        requestedCourseId && enrolledCourseIds.has(requestedCourseId)
+          ? requestedCourseId
+          : enrollments[0]?.courseId;
+      if (!selectedCourseId) {
+        setDiscussions([]);
+        return;
+      }
+
+      if (!courseNameMap[selectedCourseId]) {
+        try {
+          const courseResponse = await courseService.getById(selectedCourseId);
+          if (isSuccess(courseResponse.code) && courseResponse.result?.title) {
+            courseNameMap[selectedCourseId] = courseResponse.result.title;
+          }
+        } catch {
+          // Keep course name empty if lookup fails.
+        }
+      }
+
+      const commentsResponse = await commentService.getByCourseMapped(selectedCourseId, courseNameMap, undefined, 0, 20);
+      if (!isSuccess(commentsResponse.code)) {
+        setDiscussions([]);
+        return;
+      }
+
+      setDiscussions(commentsResponse.result?.content || []);
     } catch (error) {
       console.error('Error fetching discussions:', error);
       setDiscussions([]);
@@ -57,7 +80,7 @@ export default function DiscussionsPage() {
 
   if (authLoading || loading) return <PageLoading message="Đang tải thảo luận..." />;
 
-  const filteredDiscussions = discussions.filter(d => 
+  const filteredDiscussions = discussions.filter(d =>
     d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -102,18 +125,23 @@ export default function DiscussionsPage() {
                     {discussion.author.fullName.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center gap-2">
-                      <Link href={`/discussions/${discussion.id}`} className="font-semibold text-gray-900 hover:text-blue-600">
+                    <div className="mb-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                      <span className="flex items-center gap-1"><User className="h-3 w-3" />{discussion.author.fullName}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatTimeAgo(discussion.createdAt)}</span>
+                    </div>
+
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <Link href={`/discussions/${discussion.id}`} className="text-lg font-semibold text-gray-900 hover:text-blue-600">
                         {discussion.title}
                       </Link>
                       {discussion.courseName && (
                         <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">{discussion.courseName}</span>
                       )}
                     </div>
-                    <p className="mb-2 text-sm text-gray-500 line-clamp-2">{discussion.content}</p>
+                    {discussion.content && (
+                      <p className="mb-2 text-sm text-gray-500 line-clamp-2">{discussion.content}</p>
+                    )}
                     <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
-                      <span className="flex items-center gap-1"><User className="h-3 w-3" />{discussion.author.fullName}</span>
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatTimeAgo(discussion.createdAt)}</span>
                       <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{discussion.replyCount} phản hồi</span>
                       <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" />{discussion.likeCount} thích</span>
                     </div>
