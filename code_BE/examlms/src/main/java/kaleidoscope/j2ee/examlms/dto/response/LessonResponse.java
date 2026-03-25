@@ -13,6 +13,8 @@ public class LessonResponse {
     private String chapterId;
     private String title;
     private String content;
+    private String videoUrl;
+    private Integer duration;
     private int orderIndex;
     private boolean isDeleted;
 }

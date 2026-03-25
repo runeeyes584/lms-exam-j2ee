@@ -34,6 +34,8 @@ public class LessonServiceImpl implements LessonService {
                 .chapterId(request.getChapterId())
                 .title(request.getTitle())
                 .content(request.getContent())
+                .videoUrl(request.getVideoUrl())
+                .duration(request.getDuration())
                 .orderIndex(request.getOrderIndex())
                 .isDeleted(false)
                 .build();
@@ -46,6 +48,8 @@ public class LessonServiceImpl implements LessonService {
                 .orElseThrow(() -> new ResourceNotFoundException("Lesson not found with id: " + id));
         lesson.setTitle(request.getTitle());
         lesson.setContent(request.getContent());
+        lesson.setVideoUrl(request.getVideoUrl());
+        lesson.setDuration(request.getDuration());
         lesson.setOrderIndex(request.getOrderIndex());
         return toResponse(lessonRepository.save(lesson));
     }
@@ -64,6 +68,8 @@ public class LessonServiceImpl implements LessonService {
                 .chapterId(l.getChapterId())
                 .title(l.getTitle())
                 .content(l.getContent())
+                .videoUrl(l.getVideoUrl())
+                .duration(l.getDuration())
                 .orderIndex(l.getOrderIndex())
                 .isDeleted(l.isDeleted())
                 .build();

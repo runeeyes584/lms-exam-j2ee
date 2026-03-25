@@ -110,6 +110,7 @@ kaleidoscope\j2ee\examlms\service\impl\QuestionServiceImpl.class
 kaleidoscope\j2ee\examlms\dto\response\GradingDetailResponse$QuestionGradeDetail.class
 kaleidoscope\j2ee\examlms\repository\QuestionRepository.class
 kaleidoscope\j2ee\examlms\dto\request\LessonRequest.class
+kaleidoscope\j2ee\examlms\dto\response\ExamAttemptResponse$QuestionResult.class
 kaleidoscope\j2ee\examlms\service\ProgressService.class
 kaleidoscope\j2ee\examlms\dto\response\QuestionResponse.class
 kaleidoscope\j2ee\examlms\dto\response\UserPublicResponse.class
@@ -145,6 +146,7 @@ kaleidoscope\j2ee\examlms\dto\response\InstructorRequestUserResponse$InstructorR
 kaleidoscope\j2ee\examlms\entity\User.class
 kaleidoscope\j2ee\examlms\controller\CourseController.class
 kaleidoscope\j2ee\examlms\dto\request\UpdateUserRoleRequest.class
+kaleidoscope\j2ee\examlms\dto\response\CourseMemberResponse.class
 kaleidoscope\j2ee\examlms\dto\response\LessonResponse$LessonResponseBuilder.class
 kaleidoscope\j2ee\examlms\service\ChapterService.class
 kaleidoscope\j2ee\examlms\controller\VNPayPaymentController.class
@@ -166,6 +168,7 @@ kaleidoscope\j2ee\examlms\controller\AdminUserController.class
 kaleidoscope\j2ee\examlms\service\ExamAttemptService.class
 kaleidoscope\j2ee\examlms\controller\UserController.class
 kaleidoscope\j2ee\examlms\entity\enums\InstructorRequestStatus.class
+kaleidoscope\j2ee\examlms\dto\response\CourseMemberResponse$CourseMemberResponseBuilder.class
 kaleidoscope\j2ee\examlms\dto\request\ReviewRequest.class
 kaleidoscope\j2ee\examlms\entity\Chapter$ChapterBuilder.class
 kaleidoscope\j2ee\examlms\exception\GlobalExceptionHandler.class

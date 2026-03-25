@@ -138,7 +138,9 @@ export default function InstructorCoursesPage() {
                         {course.isDeleted ? 'Đã xóa mềm' : course.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
                       </span>
                     </div>
-                    <p className="mb-3 text-sm text-gray-500 line-clamp-2">{course.description || 'Chưa có mô tả'}</p>
+                    <p className="mb-3 whitespace-pre-line break-words text-sm text-gray-500">
+                      {course.description || 'Chưa có mô tả'}
+                    </p>
                     <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                       <span>Giá: {Number(course.price || 0).toLocaleString('vi-VN')}đ</span>
                       <span className="flex items-center gap-1"><Users className="h-4 w-4" />GV: {course.instructorId}</span>

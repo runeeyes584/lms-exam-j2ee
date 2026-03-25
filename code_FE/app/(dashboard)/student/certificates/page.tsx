@@ -109,18 +109,18 @@ export default function CertificatesPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {certificates.map(certificate => (
-            <Card key={certificate.id} className="overflow-hidden">
+            <Card key={certificate.id} className="flex h-full flex-col overflow-hidden">
               <div className="relative bg-gradient-to-br from-blue-600 via-cyan-700 to-emerald-700 p-6 text-white">
                 <div className="absolute right-4 top-4 opacity-20">
                   <Award className="h-16 w-16" />
                 </div>
-                <div className="relative">
+                <div className="relative min-h-[128px]">
                   <p className="text-xs font-medium uppercase tracking-wider text-cyan-100">Chứng chỉ hoàn thành</p>
-                  <h3 className="mt-2 line-clamp-2 text-lg font-bold">{certificate.courseName}</h3>
-                  <p className="mt-2 text-sm text-cyan-50">{certificate.studentName}</p>
+                  <h3 className="mt-2 line-clamp-2 min-h-[56px] text-lg font-bold">{certificate.courseName}</h3>
+                  <p className="mt-2 line-clamp-1 text-sm text-cyan-50">{certificate.studentName}</p>
                 </div>
               </div>
-              <CardContent className="p-4">
+              <CardContent className="flex flex-1 flex-col p-4">
                 <div className="mb-4 space-y-2 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -131,7 +131,7 @@ export default function CertificatesPage() {
                     <span>Mã số: {certificate.certificateNumber}</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="mt-auto flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDownload(certificate)}>
                     <Download className="mr-2 h-4 w-4" />
                     Tải về

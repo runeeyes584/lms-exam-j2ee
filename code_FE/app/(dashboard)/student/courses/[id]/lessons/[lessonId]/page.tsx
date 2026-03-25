@@ -22,6 +22,7 @@ import {
   type CourseResponse,
   type LessonResponse,
 } from '@/services/courseService';
+import { mediaService } from '@/services/mediaService';
 import { progressService } from '@/services/enrollmentService';
 import { isSuccess } from '@/types/types';
 import { toast } from 'react-hot-toast';
@@ -86,12 +87,39 @@ export default function LessonLearningPage({ params }: { params: { id: string; l
           try {
             const lessonRes = await lessonService.getByChapter(chapter.id);
             if (!isSuccess(lessonRes.code)) return [];
-            return (lessonRes.result || [])
+            const lessons = (lessonRes.result || [])
               .sort((a, b) => a.orderIndex - b.orderIndex)
               .map(lesson => ({
                 ...lesson,
                 isCompleted: completedIds.includes(lesson.id),
               }));
+
+            const lessonsWithVideoFallback = await Promise.all(
+              lessons.map(async lesson => {
+                if (lesson.videoUrl && lesson.videoUrl.trim().length > 0) {
+                  return lesson;
+                }
+                try {
+                  const mediaRes = await mediaService.getByLesson(lesson.id);
+                  if (isSuccess(mediaRes.code)) {
+                    const videoMedia = (mediaRes.result || []).find(
+                      (item: any) => item?.type === 'VIDEO' && item?.url
+                    );
+                    if (videoMedia?.url) {
+                      return {
+                        ...lesson,
+                        videoUrl: videoMedia.url,
+                      };
+                    }
+                  }
+                } catch {
+                  // no-op: keep lesson as-is
+                }
+                return lesson;
+              })
+            );
+
+            return lessonsWithVideoFallback;
           } catch {
             return [];
           }
@@ -133,6 +161,11 @@ export default function LessonLearningPage({ params }: { params: { id: string; l
 
   const completedLessons = flatLessons.filter(item => item.lesson.isCompleted).length;
   const progressPercent = flatLessons.length === 0 ? 0 : Math.round((completedLessons / flatLessons.length) * 100);
+  const currentVideoUrl = currentItem?.lesson?.videoUrl?.trim() || '';
+  const youtubeMatch = currentVideoUrl.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{6,})/
+  );
+  const youtubeEmbedUrl = youtubeMatch ? `https://www.youtube.com/embed/${youtubeMatch[1]}` : null;
 
   useEffect(() => {
     if (!user || !currentItem) return;
@@ -304,16 +337,26 @@ export default function LessonLearningPage({ params }: { params: { id: string; l
             </p>
           </div>
 
-          {currentItem.lesson.videoUrl && (
+          {currentVideoUrl && (
             <div className="mt-6">
               <h3 className="mb-3 text-2xl font-semibold text-gray-900">Video bài học</h3>
               <div className="overflow-hidden rounded border bg-black">
-                <video controls className="h-auto w-full" src={currentItem.lesson.videoUrl}>
-                  Trình duyệt của bạn không hỗ trợ phát video.
-                </video>
+                {youtubeEmbedUrl ? (
+                  <iframe
+                    src={youtubeEmbedUrl}
+                    title="Video bài học"
+                    className="aspect-video w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video controls className="h-auto w-full" src={currentVideoUrl}>
+                    Trình duyệt của bạn không hỗ trợ phát video.
+                  </video>
+                )}
               </div>
               <a
-                href={currentItem.lesson.videoUrl}
+                href={currentVideoUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-2 inline-flex items-center gap-2 text-sm text-blue-700 hover:underline"

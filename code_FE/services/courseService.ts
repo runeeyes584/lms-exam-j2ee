@@ -89,13 +89,10 @@ export const courseService = {
   getMyCourses: async (instructorId: string): Promise<ApiResponse<CourseResponse[]>> => {
     try {
       const response = await api.get(`/v1/courses/instructor/${instructorId}`);
-      const ownedCourses = (response.data.result || []).map(normalizeCourse);
-      if (ownedCourses.length > 0) {
-        return {
-          ...response.data,
-          result: ownedCourses,
-        };
-      }
+      return {
+        ...response.data,
+        result: (response.data.result || []).map(normalizeCourse),
+      };
     } catch {
       // Fallback to legacy behavior below.
     }
@@ -108,7 +105,7 @@ export const courseService = {
 
     return {
       ...fallbackResponse.data,
-      result: ownedCourses.length > 0 ? ownedCourses : allCourses,
+      result: ownedCourses,
     };
   },
 

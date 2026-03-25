@@ -30,6 +30,12 @@ public class Lesson {
     /** Optional rich-text / markdown content for the lesson */
     private String content;
 
+    /** Optional video URL (Youtube, Vimeo, CDN...) */
+    private String videoUrl;
+
+    /** Optional duration in minutes */
+    private Integer duration;
+
     /** Determines the display order within the chapter (1-based) */
     private int orderIndex;
 
