@@ -11,7 +11,7 @@ import { registerSchema, type RegisterFormData } from '@/lib/validations';
 
 export default function RegisterPage() {
   const { register: registerUser, isLoading } = useAuth();
-  
+
   const {
     register,
     handleSubmit,
@@ -29,11 +29,14 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     const { confirmPassword, ...registerData } = data;
-    await registerUser(registerData);
+    await registerUser({
+      ...registerData,
+      role: 'STUDENT',
+    });
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
@@ -116,21 +119,8 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                  Vai trò
-                </label>
-                <select
-                  id="role"
-                  {...register('role')}
-                  className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="STUDENT">Học viên</option>
-                  <option value="INSTRUCTOR">Giảng viên</option>
-                </select>
-                {errors.role && (
-                  <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
-                )}
+              <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                Vai trò tài khoản mặc định là <strong>Học viên</strong>. Nếu muốn trở thành giảng viên, bạn có thể gửi yêu cầu sau khi đăng nhập.
               </div>
 
               <Button
@@ -158,4 +148,4 @@ export default function RegisterPage() {
       </div>
     </div>
   );
-}
+}

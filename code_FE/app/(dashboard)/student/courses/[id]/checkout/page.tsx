@@ -9,6 +9,7 @@ import { PageLoading } from '@/components/ui/loading';
 import { ArrowLeft, CreditCard, ShieldCheck, Info, CheckCircle2 } from 'lucide-react';
 import { courseService, CourseResponse } from '@/services/courseService';
 import { enrollmentService } from '@/services/enrollmentService';
+import { paymentService } from '@/services';
 import { ResponseCode } from '@/types/types';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
@@ -35,23 +36,22 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
         router.back();
       }
     } catch (error) {
-       console.error('Error finding course:', error);
-       // Mock for demo if API fails
-       setCourse({
-         id: params.id,
-         title: 'Lập trình ReactJS từ cơ bản đến nâng cao',
-         description: 'Khóa học giúp bạn nắm vững React hooks, NextJS, Server Components.',
-         price: 599000,
-         createdAt: new Date().toISOString(),
-         updatedAt: new Date().toISOString(),
-         instructorId: 'ins-1',
-         tags: [],
-         isPublished: true,
-         instructor: {
-           id: 'ins-1',
-           fullName: 'Nguyễn Văn A'
-         }
-       });
+      console.error('Error finding course:', error);
+      setCourse({
+        id: params.id,
+        title: 'Lập trình ReactJS từ cơ bản đến nâng cao',
+        description: 'Khóa học giúp bạn nắm vững React hooks, NextJS, Server Components.',
+        price: 599000,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        instructorId: 'ins-1',
+        tags: [],
+        isPublished: true,
+        instructor: {
+          id: 'ins-1',
+          fullName: 'Nguyễn Văn A',
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -59,33 +59,30 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
   const handleVNPayCheckout = async () => {
     if (!user || !course) return;
-    
+
     setProcessing(true);
-    
-    // Simulate API call to get VNPay URL
+
     try {
-      // Typically: const res = await paymentService.createVNPayUrl(course.id, amount);
-      // window.location.href = res.data.paymentUrl;
-      
-      // Since we don't have the real VNPay API, we'll simulate a processing delay
-      // then direct enroll the student and show success.
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Try enrolling via API
-      try {
+      if (!course.price || course.price <= 0) {
         await enrollmentService.enroll({
           userId: user.id,
-          courseId: course.id
+          courseId: course.id,
         });
-      } catch (e) {
-        console.log('Mock enrollment success');
+
+        setPaymentSuccess(true);
+        toast.success('Đăng ký khóa học thành công!');
+        return;
       }
 
-      setPaymentSuccess(true);
-      toast.success('Thanh toán thành công!');
+      const paymentUrl = await paymentService.createPayment(user.id, course.id);
+      if (!paymentUrl || typeof paymentUrl !== 'string') {
+        throw new Error('Không nhận được đường dẫn thanh toán VNPay');
+      }
+
+      window.location.href = paymentUrl;
     } catch (error) {
+      console.error('VNPay checkout error:', error);
       toast.error('Có lỗi xảy ra khi tạo giao dịch thanh toán');
-    } finally {
       setProcessing(false);
     }
   };
@@ -95,18 +92,18 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
   if (paymentSuccess) {
     return (
-      <div className="mx-auto max-w-2xl py-12 px-4 sm:px-6">
+      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
         <Card className="border-green-100 shadow-lg">
-          <CardContent className="p-8 sm:p-12 text-center">
+          <CardContent className="p-8 text-center sm:p-12">
             <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-green-100">
               <CheckCircle2 className="h-12 w-12 text-green-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Thanh toán thành công!</h1>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            <h1 className="mb-4 text-3xl font-bold text-gray-900">Thanh toán thành công!</h1>
+            <p className="mx-auto mb-8 max-w-md text-gray-600">
               Cảm ơn bạn đã mua khóa học <strong>{course.title}</strong>. Hóa đơn điện tử đã được gửi tới email của bạn.
             </p>
             <Link href={`/student/courses/${course.id}`}>
-              <Button size="lg" className="w-full sm:w-auto px-8">
+              <Button size="lg" className="w-full px-8 sm:w-auto">
                 Vào học ngay
               </Button>
             </Link>
@@ -131,28 +128,28 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-5">
-        
-        {/* Course Details Panel */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="space-y-6 lg:col-span-3">
           <Card>
-            <CardHeader className="bg-gray-50 border-b pb-4">
+            <CardHeader className="border-b bg-gray-50 pb-4">
               <CardTitle className="text-lg">Chi tiết đơn hàng</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex gap-4">
-                <div className="h-24 w-32 shrink-0 rounded-lg bg-blue-100 overflow-hidden relative">
-                   {course.coverImage ? (
-                     <img src={course.coverImage} className="w-full h-full object-cover" alt={course.title} />
-                   ) : (
-                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-2 text-center font-bold text-xs uppercase overflow-hidden">
-                       LMS Course
-                     </div>
-                   )}
+                <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-lg bg-blue-100">
+                  {course.coverImage ? (
+                    <img src={course.coverImage} className="h-full w-full object-cover" alt={course.title} />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600 p-2 text-center text-xs font-bold uppercase text-white">
+                      LMS Course
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 leading-tight mb-2">{course.title}</h3>
-                  <p className="text-sm text-gray-600 mb-1">Giảng viên: <span className="font-medium text-gray-900">{course.instructor?.fullName}</span></p>
-                  <p className="flex items-center gap-2 text-blue-600 font-bold text-lg mt-3">
+                  <h3 className="mb-2 text-xl font-bold leading-tight text-gray-900">{course.title}</h3>
+                  <p className="mb-1 text-sm text-gray-600">
+                    Giảng viên: <span className="font-medium text-gray-900">{course.instructor?.fullName}</span>
+                  </p>
+                  <p className="mt-3 flex items-center gap-2 text-lg font-bold text-blue-600">
                     {course.price ? `${course.price.toLocaleString('vi-VN')} đ` : 'Miễn phí'}
                   </p>
                 </div>
@@ -161,31 +158,30 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
           </Card>
 
           <Card>
-            <CardContent className="p-6 space-y-4">
-              <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                 <ShieldCheck className="h-5 w-5 text-green-600" />
-                 Thanh toán an toàn
+            <CardContent className="space-y-4 p-6">
+              <h4 className="flex items-center gap-2 font-semibold text-gray-900">
+                <ShieldCheck className="h-5 w-5 text-green-600" />
+                Thanh toán an toàn
               </h4>
               <p className="text-sm text-gray-600">
                 LMS System sử dụng mã hóa SSL 256-bit đảm bảo an toàn tuyệt đối cho các giao dịch thanh toán. Thông tin thẻ của bạn không được lưu trữ trên server của chúng tôi.
               </p>
-              
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-3 text-sm text-blue-800">
-                 <Info className="h-5 w-5 shrink-0 text-blue-500" />
-                 <div>Sau khi thanh toán thành công, khóa học sẽ được thêm vào thư viện "Khóa học của tôi" và bạn có thể bắt đầu học ngay lập tức.</div>
+
+              <div className="flex gap-3 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+                <Info className="h-5 w-5 shrink-0 text-blue-500" />
+                <div>Sau khi thanh toán thành công, khóa học sẽ được thêm vào thư viện "Khóa học của tôi" và bạn có thể bắt đầu học ngay lập tức.</div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Payment Summary Panel */}
         <div className="lg:col-span-2">
           <Card className="sticky top-24 border-blue-200 shadow-md">
-            <CardHeader className="bg-white border-b pb-4">
+            <CardHeader className="border-b bg-white pb-4">
               <CardTitle className="text-lg">Tóm tắt thanh toán</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="space-y-4 text-sm mb-6">
+              <div className="mb-6 space-y-4 text-sm">
                 <div className="flex justify-between text-gray-600">
                   <span>Giá gốc:</span>
                   <span>{course.price ? `${course.price.toLocaleString('vi-VN')} đ` : '0 đ'}</span>
@@ -194,34 +190,33 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
                   <span>Giảm giá:</span>
                   <span>0 đ</span>
                 </div>
-                <div className="mt-4 border-t pt-4 flex justify-between font-bold text-xl text-gray-900">
+                <div className="mt-4 flex justify-between border-t pt-4 text-xl font-bold text-gray-900">
                   <span>Tổng thanh toán:</span>
                   <span>{course.price ? `${course.price.toLocaleString('vi-VN')} đ` : '0 đ'}</span>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Button 
-                  onClick={handleVNPayCheckout} 
+                <Button
+                  onClick={handleVNPayCheckout}
                   disabled={processing}
-                  className="w-full h-14 text-base font-bold bg-[#005baa] hover:bg-[#004e92] transition-colors shadow-sm"
+                  className="h-14 w-full bg-[#005baa] text-base font-bold shadow-sm transition-colors hover:bg-[#004e92]"
                 >
                   {processing ? 'Đang xử lý giao dịch...' : (
                     <span className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" /> 
+                      <CreditCard className="h-5 w-5" />
                       Thanh toán qua VNPay
                     </span>
                   )}
                 </Button>
-                
-                <p className="text-xs text-center text-gray-500 mt-4 px-2">
+
+                <p className="mt-4 px-2 text-center text-xs text-gray-500">
                   Bằng việc hoàn tất thanh toán, bạn đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật của chúng tôi.
                 </p>
-                <div className="flex justify-center items-center gap-2 mt-4 opacity-70">
-                  {/* Fake logos for trust */}
-                  <div className="h-8 w-12 bg-gray-200 rounded flex justify-center items-center text-xs font-bold text-gray-600">VNPay</div>
-                  <div className="h-8 w-12 bg-gray-200 rounded flex justify-center items-center text-xs font-bold text-gray-600">Visa</div>
-                  <div className="h-8 w-12 bg-gray-200 rounded flex justify-center items-center text-xs font-bold text-gray-600">Master</div>
+                <div className="mt-4 flex items-center justify-center gap-2 opacity-70">
+                  <div className="flex h-8 w-12 items-center justify-center rounded bg-gray-200 text-xs font-bold text-gray-600">VNPay</div>
+                  <div className="flex h-8 w-12 items-center justify-center rounded bg-gray-200 text-xs font-bold text-gray-600">Visa</div>
+                  <div className="flex h-8 w-12 items-center justify-center rounded bg-gray-200 text-xs font-bold text-gray-600">Master</div>
                 </div>
               </div>
             </CardContent>

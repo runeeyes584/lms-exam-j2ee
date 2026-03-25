@@ -38,12 +38,12 @@ export default function InstructorRequestsPage() {
       const response = await adminService.approveInstructor(requestId);
       if (isSuccess(response.code)) {
         setRequests(prev => prev.map(item => (item.id === requestId ? { ...item, status: 'APPROVED' } : item)));
-        toast.success('Da duyet yeu cau');
+        toast.success('Đã duyệt yêu cầu');
       } else {
-        toast.error(response.message || 'Co loi xay ra');
+        toast.error(response.message || 'Có lỗi xảy ra');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Co loi xay ra');
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
@@ -52,25 +52,25 @@ export default function InstructorRequestsPage() {
       const response = await adminService.rejectInstructor(requestId);
       if (isSuccess(response.code)) {
         setRequests(prev => prev.map(item => (item.id === requestId ? { ...item, status: 'REJECTED' } : item)));
-        toast.success('Da tu choi yeu cau');
+        toast.success('Đã từ chối yêu cầu');
       } else {
-        toast.error(response.message || 'Co loi xay ra');
+        toast.error(response.message || 'Có lỗi xảy ra');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Co loi xay ra');
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
-  if (authLoading || loading) return <PageLoading message="Dang tai yeu cau..." />;
+  if (authLoading || loading) return <PageLoading message="Đang tải yêu cầu..." />;
 
   const filteredRequests = requests.filter(request => filter === 'all' || request.status === filter);
   const pendingCount = requests.filter(request => request.status === 'PENDING').length;
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, JSX.Element> = {
-      PENDING: <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700"><Clock className="h-3 w-3" />Cho duyet</span>,
-      APPROVED: <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700"><CheckCircle className="h-3 w-3" />Da duyet</span>,
-      REJECTED: <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700"><XCircle className="h-3 w-3" />Tu choi</span>,
+      PENDING: <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700"><Clock className="h-3 w-3" />Chờ duyệt</span>,
+      APPROVED: <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700"><CheckCircle className="h-3 w-3" />Đã duyệt</span>,
+      REJECTED: <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700"><XCircle className="h-3 w-3" />Từ chối</span>,
     };
     return badges[status];
   };
@@ -79,12 +79,12 @@ export default function InstructorRequestsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Duyet giang vien</h1>
-          <p className="mt-2 text-gray-600">Trang nay dang map truc tiep voi API instructor requests cua backend</p>
+          <h1 className="text-3xl font-bold text-gray-900">Duyệt giảng viên</h1>
+          <p className="mt-2 text-gray-600">Trang này đang kết nối trực tiếp với API duyệt giảng viên của backend</p>
         </div>
         {pendingCount > 0 && (
           <div className="rounded-lg bg-yellow-50 px-4 py-2 text-sm text-yellow-700">
-            <strong>{pendingCount}</strong> yeu cau dang cho duyet
+            <strong>{pendingCount}</strong> yêu cầu đang chờ duyệt
           </div>
         )}
       </div>
@@ -92,13 +92,13 @@ export default function InstructorRequestsPage() {
       <div className="flex gap-2">
         {(['PENDING', 'APPROVED', 'REJECTED', 'all'] as const).map(value => (
           <Button key={value} variant={filter === value ? 'default' : 'outline'} size="sm" onClick={() => setFilter(value)}>
-            {value === 'all' ? 'Tat ca' : value === 'PENDING' ? 'Cho duyet' : value === 'APPROVED' ? 'Da duyet' : 'Tu choi'}
+            {value === 'all' ? 'Tất cả' : value === 'PENDING' ? 'Chờ duyệt' : value === 'APPROVED' ? 'Đã duyệt' : 'Từ chối'}
           </Button>
         ))}
       </div>
 
       {filteredRequests.length === 0 ? (
-        <EmptyState icon={GraduationCap} title="Khong co yeu cau nao" description="Khong co yeu cau tro thanh giang vien nao phu hop voi bo loc" />
+        <EmptyState icon={GraduationCap} title="Không có yêu cầu nào" description="Không có yêu cầu trở thành giảng viên nào phù hợp với bộ lọc" />
       ) : (
         <div className="space-y-4">
           {filteredRequests.map(request => (
@@ -117,7 +117,7 @@ export default function InstructorRequestsPage() {
                         </div>
                         <p className="flex items-center gap-1 text-sm text-gray-500">
                           <Mail className="h-3 w-3" />
-                          {request.user?.email || 'Khong co email'}
+                          {request.user?.email || 'Không có email'}
                         </p>
                       </div>
                     </div>
@@ -128,24 +128,24 @@ export default function InstructorRequestsPage() {
                         <p className="text-sm text-gray-900">{request.userId}</p>
                       </div>
                       <div className="rounded-lg bg-gray-50 p-3">
-                        <p className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-500"><GraduationCap className="h-3 w-3" />Vai tro hien tai</p>
+                        <p className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-500"><GraduationCap className="h-3 w-3" />Vai trò hiện tại</p>
                         <p className="text-sm text-gray-900">{request.user?.role || 'N/A'}</p>
                       </div>
                       <div className="rounded-lg bg-gray-50 p-3">
-                        <p className="mb-1 text-xs font-medium text-gray-500">Ghi chu</p>
-                        <p className="text-sm text-gray-900">{request.note || 'Khong co ghi chu'}</p>
+                        <p className="mb-1 text-xs font-medium text-gray-500">Ghi chú</p>
+                        <p className="text-sm text-gray-900">{request.note || 'Không có ghi chú'}</p>
                       </div>
                     </div>
 
                     <p className="mt-3 flex items-center gap-1 text-sm text-gray-500">
-                      <Calendar className="h-4 w-4" />Ngay gui: {new Date(request.createdAt).toLocaleDateString('vi-VN')}
+                      <Calendar className="h-4 w-4" />Ngày gửi: {new Date(request.createdAt).toLocaleDateString('vi-VN')}
                     </p>
                   </div>
 
                   {request.status === 'PENDING' && (
                     <div className="flex gap-2">
-                      <Button onClick={() => handleApprove(request.id)}><CheckCircle className="mr-2 h-4 w-4" />Duyet</Button>
-                      <Button variant="outline" onClick={() => handleReject(request.id)}><XCircle className="mr-2 h-4 w-4" />Tu choi</Button>
+                      <Button onClick={() => handleApprove(request.id)}><CheckCircle className="mr-2 h-4 w-4" />Duyệt</Button>
+                      <Button variant="outline" onClick={() => handleReject(request.id)}><XCircle className="mr-2 h-4 w-4" />Từ chối</Button>
                     </div>
                   )}
                 </div>
