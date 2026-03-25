@@ -2,6 +2,8 @@ package kaleidoscope.j2ee.examlms.service.impl;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,7 +23,7 @@ import kaleidoscope.j2ee.examlms.repository.CourseRepository;
 import kaleidoscope.j2ee.examlms.repository.UserCourseRepository;
 import kaleidoscope.j2ee.examlms.repository.UserRepository;
 import kaleidoscope.j2ee.examlms.service.CertificateService;
-import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.DeviceRgb;
@@ -43,6 +45,17 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CertificateServiceImpl implements CertificateService {
 
+        private static final String[] TITLE_FONT_CANDIDATES = {
+                        "C:/Windows/Fonts/timesbd.ttf",
+                        "C:/Windows/Fonts/arialbd.ttf",
+                        "C:/Windows/Fonts/arial.ttf"
+        };
+
+        private static final String[] BODY_FONT_CANDIDATES = {
+                        "C:/Windows/Fonts/times.ttf",
+                        "C:/Windows/Fonts/arial.ttf"
+        };
+
         private final CertificateRepository certificateRepository;
         private final UserCourseRepository userCourseRepository;
         private final UserRepository userRepository;
@@ -61,8 +74,8 @@ public class CertificateServiceImpl implements CertificateService {
 
                 return certificateRepository
                                 .findByUserIdAndCourseId(userId, courseId)
-                                .map(Certificate::getFilePath)
-                                .orElseGet(() -> createNewCertificate(userId, courseId));
+                                .map(existing -> createOrRefreshCertificate(userId, courseId, existing))
+                                .orElseGet(() -> createOrRefreshCertificate(userId, courseId, null));
         }
 
         @Override
@@ -79,7 +92,7 @@ public class CertificateServiceImpl implements CertificateService {
                         return false;
                 }
 
-                createNewCertificate(userId, courseId);
+                createOrRefreshCertificate(userId, courseId, null);
                 return true;
         }
 
@@ -110,7 +123,9 @@ public class CertificateServiceImpl implements CertificateService {
 
         @Override
         public String getCertificateFile(String userId, String courseId) {
-                return generateCertificate(userId, courseId);
+                return certificateRepository.findByUserIdAndCourseId(userId, courseId)
+                                .map(existing -> createOrRefreshCertificate(userId, courseId, existing))
+                                .orElseGet(() -> generateCertificate(userId, courseId));
         }
 
         @Override
@@ -137,7 +152,7 @@ public class CertificateServiceImpl implements CertificateService {
                                 .build();
         }
 
-        private String createNewCertificate(String userId, String courseId) {
+        private String createOrRefreshCertificate(String userId, String courseId, Certificate existingCertificate) {
 
                 try {
                         User user = userRepository.findById(userId)
@@ -151,12 +166,19 @@ public class CertificateServiceImpl implements CertificateService {
                         String folderPath = "upload/certificates/";
                         new File(folderPath).mkdirs();
 
-                        String certificateNumber = "CERT-"
-                                        + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-                                        + "-"
-                                        + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                        String certificateNumber = existingCertificate != null
+                                        ? existingCertificate.getCertificateNumber()
+                                        : null;
+                        if (certificateNumber == null || certificateNumber.isBlank()) {
+                                certificateNumber = "CERT-"
+                                                + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                                                + "-"
+                                                + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                        }
                         String sanitized = certificateNumber.replaceAll("[^A-Z0-9\\-]", "");
-                        String fileName = "certificate_" + sanitized + ".pdf";
+                        String fileName = existingCertificate != null && existingCertificate.getFilePath() != null
+                                        ? Path.of(existingCertificate.getFilePath()).getFileName().toString()
+                                        : "certificate_" + sanitized + ".pdf";
                         String fullPath = folderPath + fileName;
 
                         PdfWriter writer = new PdfWriter(fullPath);
@@ -179,8 +201,8 @@ public class CertificateServiceImpl implements CertificateService {
                         document.add(background);
 
                         // ===== FONT =====
-                        PdfFont titleFont = PdfFontFactory.createFont(StandardFonts.TIMES_BOLD);
-                        PdfFont bodyFont = PdfFontFactory.createFont(StandardFonts.TIMES_ROMAN);
+                        PdfFont titleFont = loadUnicodeFont(TITLE_FONT_CANDIDATES);
+                        PdfFont bodyFont = loadUnicodeFont(BODY_FONT_CANDIDATES);
 
                         // ===== TITLE =====
                         document.add(new Paragraph("CERTIFICATE")
@@ -270,16 +292,17 @@ public class CertificateServiceImpl implements CertificateService {
                         document.close();
 
                         // SAVE DB
-                        Certificate certificate = Certificate.builder()
-                                        .userId(userId)
-                                        .courseId(courseId)
-                                        .certificateNumber(certificateNumber)
-                                        .studentName(user.getFullName())
-                                        .studentEmail(user.getEmail())
-                                        .courseName(course.getTitle())
-                                        .filePath(fullPath)
-                                        .issuedAt(LocalDateTime.now())
-                                        .build();
+                        Certificate certificate = existingCertificate != null ? existingCertificate : new Certificate();
+                        certificate.setUserId(userId);
+                        certificate.setCourseId(courseId);
+                        certificate.setCertificateNumber(certificateNumber);
+                        certificate.setStudentName(user.getFullName());
+                        certificate.setStudentEmail(user.getEmail());
+                        certificate.setCourseName(course.getTitle());
+                        certificate.setFilePath(fullPath);
+                        certificate.setIssuedAt(existingCertificate != null && existingCertificate.getIssuedAt() != null
+                                        ? existingCertificate.getIssuedAt()
+                                        : LocalDateTime.now());
 
                         certificateRepository.save(certificate);
 
@@ -288,5 +311,22 @@ public class CertificateServiceImpl implements CertificateService {
                 } catch (Exception e) {
                         throw new CertificateException("Error generating certificate", e);
                 }
+        }
+
+        private PdfFont loadUnicodeFont(String[] candidates) {
+                for (String candidate : candidates) {
+                        if (!Files.exists(Path.of(candidate))) {
+                                continue;
+                        }
+
+                        try {
+                                return PdfFontFactory.createFont(candidate, PdfEncodings.IDENTITY_H,
+                                                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                        } catch (Exception ignored) {
+                                // Try the next available font candidate.
+                        }
+                }
+
+                throw new CertificateException("No Unicode font found for certificate generation");
         }
 }
