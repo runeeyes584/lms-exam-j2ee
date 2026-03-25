@@ -15,8 +15,11 @@ import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +28,6 @@ import kaleidoscope.j2ee.examlms.entity.UserCourse;
 import kaleidoscope.j2ee.examlms.repository.PaymentRepository;
 import kaleidoscope.j2ee.examlms.repository.UserCourseRepository;
 import kaleidoscope.j2ee.examlms.service.VNPayPaymentService;
-
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -33,8 +35,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class VNPayPaymentServiceImpl implements VNPayPaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(VNPayPaymentServiceImpl.class);
+
     private final PaymentRepository paymentRepository;
     private final UserCourseRepository userCourseRepository;
+    private final Environment environment;
 
     @Value("${vnpay.tmnCode}")
     private String tmnCode;
@@ -53,6 +58,18 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
 
         try {
 
+            String effectiveTmnCode = resolveConfigValue("VNPAY_TMN_CODE", tmnCode);
+            String effectiveHashSecret = resolveConfigValue("VNPAY_HASH_SECRET", hashSecret);
+            String effectivePayUrl = resolveConfigValue("VNPAY_PAY_URL", payUrl);
+            String effectiveReturnUrl = normalizeReturnUrl(resolveConfigValue("VNPAY_RETURN_URL", returnUrl));
+
+            log.info("VNPay createPaymentUrl called: userId={}, courseId={}, amount={}", userId, courseId, amount);
+            log.info("VNPay runtime config: tmnCode={}, payUrl={}, returnUrl={}, hashSecretHint={}",
+                effectiveTmnCode,
+                effectivePayUrl,
+                effectiveReturnUrl,
+                maskSecret(effectiveHashSecret));
+
             String txnRef = UUID.randomUUID().toString();
 
             // Lưu giao dịch vào DB với trạng thái PENDING
@@ -70,18 +87,23 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
 
             params.put("vnp_Version", "2.1.0");
             params.put("vnp_Command", "pay");
-            params.put("vnp_TmnCode", tmnCode);
+            params.put("vnp_TmnCode", effectiveTmnCode);
             params.put("vnp_Amount", String.valueOf(amount * 100));
             params.put("vnp_CurrCode", "VND");
             params.put("vnp_TxnRef", txnRef);
             params.put("vnp_OrderInfo", "Payment for course " + courseId);
             params.put("vnp_OrderType", "other");
             params.put("vnp_Locale", "vn");
-            params.put("vnp_ReturnUrl", returnUrl);
+            params.put("vnp_ReturnUrl", effectiveReturnUrl);
             params.put("vnp_IpAddr", "127.0.0.1");
 
             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
             params.put("vnp_CreateDate", formatter.format(new Date()));
+
+                log.info("VNPay request params before sign: vnp_TmnCode={}, vnp_ReturnUrl={}, vnp_TxnRef={}",
+                    params.get("vnp_TmnCode"),
+                    params.get("vnp_ReturnUrl"),
+                    params.get("vnp_TxnRef"));
 
             // ===== SORT FIELD NAMES =====
             List<String> fieldNames = new ArrayList<>(params.keySet());
@@ -111,15 +133,18 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
             hashData.deleteCharAt(hashData.length() - 1);
             query.deleteCharAt(query.length() - 1);
 
-            String secureHash = hmacSHA512(hashSecret, hashData.toString());
+            String secureHash = hmacSHA512(effectiveHashSecret, hashData.toString());
 
             query.append("&vnp_SecureHash=").append(secureHash);
 
-            String paymentUrl = payUrl + "?" + query;
+            String paymentUrl = effectivePayUrl + "?" + query;
+
+            log.info("VNPay redirect URL generated: {}", sanitizePaymentUrl(paymentUrl));
 
             return paymentUrl;
 
         } catch (Exception e) {
+            log.error("Failed to create VNPay payment URL", e);
             throw new RuntimeException("Failed to create VNPay payment URL", e);
         }
     }
@@ -182,5 +207,48 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
         }
 
         return sb.toString();
+    }
+
+    private String maskSecret(String secret) {
+        if (secret == null || secret.isBlank()) {
+            return "null";
+        }
+        if (secret.length() <= 8) {
+            return "****";
+        }
+        return secret.substring(0, 4) + "..." + secret.substring(secret.length() - 4);
+    }
+
+    private String sanitizePaymentUrl(String paymentUrl) {
+        if (paymentUrl == null || paymentUrl.isBlank()) {
+            return "null";
+        }
+        return paymentUrl.replaceAll("(vnp_SecureHash=)[^&]+", "$1***");
+    }
+
+    private String resolveConfigValue(String primaryKey, String fallbackValue) {
+        String primaryValue = environment.getProperty(primaryKey);
+        if (primaryValue != null && !primaryValue.isBlank()) {
+            return primaryValue;
+        }
+        return fallbackValue;
+    }
+
+    private String normalizeReturnUrl(String configuredReturnUrl) {
+        if (configuredReturnUrl == null || configuredReturnUrl.isBlank()) {
+            return "http://localhost:3000/vnpay/return";
+        }
+
+        if (configuredReturnUrl.contains("/api/vnpay/return") || configuredReturnUrl.contains("/api/payment/vnpay/callback")) {
+            String frontendBaseUrl = resolveConfigValue("APP_FRONTEND_URL", "http://localhost:3000");
+            String normalizedFrontendBaseUrl = frontendBaseUrl.endsWith("/")
+                    ? frontendBaseUrl.substring(0, frontendBaseUrl.length() - 1)
+                    : frontendBaseUrl;
+            String normalizedUrl = normalizedFrontendBaseUrl + "/vnpay/return";
+            log.warn("VNPay returnUrl is legacy API endpoint ({}), auto-normalized to {}", configuredReturnUrl, normalizedUrl);
+            return normalizedUrl;
+        }
+
+        return configuredReturnUrl;
     }
 }

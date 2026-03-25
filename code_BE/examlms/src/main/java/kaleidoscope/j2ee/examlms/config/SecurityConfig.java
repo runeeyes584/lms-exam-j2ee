@@ -49,6 +49,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // auth public
                         .requestMatchers("/api/auth/**").permitAll()
+
+                    // VNPay callback/public endpoints
+                    .requestMatchers("/api/vnpay/**").permitAll()
                         
                         // swagger ui
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()

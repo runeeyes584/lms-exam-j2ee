@@ -32,10 +32,10 @@ REM Logging Level
 set LOGGING_LEVEL=DEBUG
 
 REM VNPay Payment Gateway Configuration
-set vnpay.tmnCode=VNPAY_TMN_CODE
-set vnpay.hashSecret=VNPAY_HASH_SECRET
-set vnpay.payUrl=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-set vnpay.returnUrl=http://localhost:8080/api/payment/vnpay/callback
+set VNPAY_TMN_CODE=Z1Y39S2J
+set VNPAY_HASH_SECRET=B0VFLDZ1BL7IJW0JG0PCN9BJ2685C5K8
+set VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+set VNPAY_RETURN_URL=http://localhost:3000/vnpay/return
 
 echo Environment variables loaded successfully!
 echo.
