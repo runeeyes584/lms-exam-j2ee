@@ -21,7 +21,7 @@ public interface ExamService {
     
     List<ExamResponse> getExamsByCourse(String courseId);
     
-    List<ExamResponse> getPublishedExams();
+    List<ExamResponse> getPublishedExams(String studentId);
     
     ExamResponse publishExam(String id);
     

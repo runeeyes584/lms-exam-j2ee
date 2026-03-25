@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle, Clock, FileText, Play, Search, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { examService, ExamResponse } from '@/services/examService';
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
+import { toast } from 'react-hot-toast';
 
 interface StudentExam extends ExamResponse {
   attempts: ExamAttemptResponse[];
@@ -19,11 +21,15 @@ interface StudentExam extends ExamResponse {
 }
 
 export default function StudentExamsPage() {
+  const router = useRouter();
   const { isLoading: authLoading } = useAuth();
   const [exams, setExams] = useState<StudentExam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'available' | 'completed'>('all');
+  const [showJoinByCode, setShowJoinByCode] = useState(false);
+  const [examCode, setExamCode] = useState('');
+  const [joiningByCode, setJoiningByCode] = useState(false);
 
   useEffect(() => {
     void fetchExams();
@@ -86,12 +92,69 @@ export default function StudentExamsPage() {
     return badges[status] || <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700"><Play className="h-3 w-3" />Sẵn sàng</span>;
   };
 
+  const handleJoinByCode = async () => {
+    const code = examCode.trim();
+    if (!code) {
+      toast.error('Vui lòng nhập mã đề thi');
+      return;
+    }
+
+    setJoiningByCode(true);
+    try {
+      const response = await examService.getById(code);
+      if (!isSuccess(response.code) || !response.result) {
+        toast.error('Không tìm thấy đề thi với mã đã nhập');
+        return;
+      }
+
+      if (!response.result.isPublished) {
+        toast.error('Đề thi chưa được xuất bản');
+        return;
+      }
+
+      router.push(`/student/exams/${response.result.id}/start`);
+      toast.success('Đã tìm thấy đề thi, đang chuyển trang...');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Mã đề thi không hợp lệ');
+    } finally {
+      setJoiningByCode(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Bài thi của tôi</h1>
-        <p className="mt-2 text-gray-600">Xem trạng thái và làm các bài thi đã được xuất bản</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Bài thi của tôi</h1>
+          <p className="mt-2 text-gray-600">Xem trạng thái và làm các bài thi đã được xuất bản</p>
+        </div>
+        <Button variant={showJoinByCode ? 'default' : 'outline'} onClick={() => setShowJoinByCode(prev => !prev)}>
+          Tham gia bằng mã đề
+        </Button>
       </div>
+
+      {showJoinByCode && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                value={examCode}
+                onChange={e => setExamCode(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleJoinByCode();
+                  }
+                }}
+                placeholder="Dán mã đề thi giảng viên cung cấp..."
+              />
+              <Button onClick={() => void handleJoinByCode()} disabled={joiningByCode}>
+                {joiningByCode ? 'Đang kiểm tra...' : 'Tham gia thi'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
@@ -145,15 +208,15 @@ export default function StudentExamsPage() {
                         </Link>
                       )}
                       {(status === 'available' || status === 'can-retry') && (
-                        <Link href={`/student/exams/${exam.id}/take`}>
+                        <Link href={`/student/exams/${exam.id}/start` as any}>
                           <Button>
                             <Play className="mr-2 h-4 w-4" />
                             {status === 'can-retry' ? 'Thi lại' : 'Bắt đầu thi'}
                           </Button>
                         </Link>
                       )}
-                      {status === 'in-progress' && (
-                        <Link href={`/student/exams/${exam.id}/take`}>
+                      {status === 'in-progress' && lastAttempt && (
+                        <Link href={`/student/exams/${exam.id}/take?attemptId=${lastAttempt.id}`}>
                           <Button>
                             <Play className="mr-2 h-4 w-4" />
                             Tiếp tục

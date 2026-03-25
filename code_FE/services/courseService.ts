@@ -8,9 +8,10 @@ export interface CourseRequest {
   coverImage?: string;
   tags?: string[];
   isPublished?: boolean;
+  instructorId?: string;
 }
 
-export interface CourseResponse extends Course {
+export type CourseResponse = Omit<Course, 'instructor'> & {
   instructor?: {
     id: string;
     fullName: string;
@@ -20,7 +21,9 @@ export interface CourseResponse extends Course {
   rating?: number;
   chaptersCount?: number;
   isDeleted?: boolean;
-}
+};
+
+export type CourseStatusFilter = 'all' | 'published' | 'draft' | 'deleted';
 
 export interface PageResponse<T> {
   content: T[];
@@ -32,8 +35,11 @@ export interface PageResponse<T> {
 
 const normalizeCourse = (course: any): CourseResponse => ({
   ...course,
+  description: course?.description ?? '',
+  price: Number(course?.price ?? 0),
   tags: Array.isArray(course?.tags) ? course.tags : [],
   isPublished: Boolean(course?.isPublished),
+  isDeleted: Boolean(course?.isDeleted),
 });
 
 export const courseService = {
@@ -81,12 +87,50 @@ export const courseService = {
 
   // Get instructor's courses
   getMyCourses: async (instructorId: string): Promise<ApiResponse<CourseResponse[]>> => {
-    const response = await api.get('/v1/courses');
-    const allCourses = (response.data.result || []).map(normalizeCourse);
+    try {
+      const response = await api.get(`/v1/courses/instructor/${instructorId}`);
+      const ownedCourses = (response.data.result || []).map(normalizeCourse);
+      if (ownedCourses.length > 0) {
+        return {
+          ...response.data,
+          result: ownedCourses,
+        };
+      }
+    } catch {
+      // Fallback to legacy behavior below.
+    }
+
+    const fallbackResponse = await api.get('/v1/courses');
+    const allCourses: CourseResponse[] = (fallbackResponse.data.result || []).map(normalizeCourse);
+    const ownedCourses = allCourses.filter(course =>
+      course.instructorId === instructorId || course.instructor?.id === instructorId
+    );
+
     return {
-      ...response.data,
-      result: allCourses.filter(course => course.instructorId === instructorId),
+      ...fallbackResponse.data,
+      result: ownedCourses.length > 0 ? ownedCourses : allCourses,
     };
+  },
+
+  // Get instructor's courses (strict, no fallback to all courses)
+  getMyCoursesStrict: async (instructorId: string): Promise<ApiResponse<CourseResponse[]>> => {
+    try {
+      const response = await api.get(`/v1/courses/instructor/${instructorId}`);
+      return {
+        ...response.data,
+        result: (response.data.result || []).map(normalizeCourse),
+      };
+    } catch {
+      const fallbackResponse = await api.get('/v1/courses');
+      const allCourses: CourseResponse[] = (fallbackResponse.data.result || []).map(normalizeCourse);
+      const ownedCourses = allCourses.filter(course =>
+        course.instructorId === instructorId || course.instructor?.id === instructorId
+      );
+      return {
+        ...fallbackResponse.data,
+        result: ownedCourses,
+      };
+    }
   },
 };
 

@@ -13,6 +13,9 @@ public interface CourseService {
     /** Returns all active (non-deleted) courses */
     List<CourseResponse> getAllCourses();
 
+    /** Returns all active courses owned by an instructor */
+    List<CourseResponse> getCoursesByInstructorId(String instructorId);
+
     /** Returns a single active course by its ID */
     CourseResponse getCourseById(String id);
 

@@ -41,6 +41,19 @@ public class CertificateController {
         return ApiResponseUtil.success("Certificate generated", certificateService.generateCertificate(userId, courseId));
     }
 
+    @GetMapping("/{courseId}/generate")
+    public ApiResponse<String> generateMyCertificate(
+            Authentication authentication,
+            @PathVariable String courseId) {
+        return ApiResponseUtil.success("Certificate generated",
+                certificateService.generateCertificate(authentication.getName(), courseId));
+    }
+
+    @GetMapping("/verify/{certificateNumber}")
+    public ApiResponse<CertificateResponse> verifyCertificate(@PathVariable String certificateNumber) {
+        return ApiResponseUtil.success(certificateService.verifyCertificate(certificateNumber));
+    }
+
     @GetMapping("/{courseId}/download")
     public ResponseEntity<Resource> downloadCertificate(
             Authentication authentication,

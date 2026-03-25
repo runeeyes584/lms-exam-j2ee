@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FolderOpen, Search, Plus, Edit, Trash2, Eye, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { courseService, CourseResponse } from '@/services/courseService';
+import { courseService, CourseResponse, CourseStatusFilter } from '@/services/courseService';
 import { isSuccess } from '@/types/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ export default function InstructorCoursesPage() {
   const [courses, setCourses] = useState<CourseResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<CourseStatusFilter>('all');
 
   useEffect(() => {
     if (user?.id) {
@@ -64,7 +65,11 @@ export default function InstructorCoursesPage() {
   }
 
   const filteredCourses = courses.filter(course =>
-    course.title.toLowerCase().includes(searchQuery.toLowerCase())
+    course.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (statusFilter === 'all' ||
+      (statusFilter === 'deleted' && course.isDeleted) ||
+      (statusFilter === 'published' && !course.isDeleted && course.isPublished) ||
+      (statusFilter === 'draft' && !course.isDeleted && !course.isPublished))
   );
 
   return (
@@ -80,14 +85,28 @@ export default function InstructorCoursesPage() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <Input
-          type="text"
-          placeholder="Tìm kiếm khóa học..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Tìm kiếm khóa học..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as CourseStatusFilter)}
+            className="h-10 rounded-md border border-gray-300 px-3 text-sm"
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="published">Đã xuất bản</option>
+            <option value="draft">Bản nháp</option>
+            <option value="deleted">Đã xóa mềm</option>
+          </select>
+        </div>
       </div>
 
       {filteredCourses.length === 0 ? (
@@ -99,18 +118,27 @@ export default function InstructorCoursesPage() {
         />
       ) : (
         <div className="space-y-4">
-          {filteredCourses.map(course => (
+          {filteredCourses
+            .slice()
+            .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))
+            .map(course => (
             <Card key={course.id}>
               <CardContent className="p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1">
                     <div className="mb-2 flex items-center gap-3">
                       <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${course.isDeleted ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                        {course.isDeleted ? 'Đã xóa mềm' : 'Đang hoạt động'}
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        course.isDeleted
+                          ? 'bg-red-100 text-red-700'
+                          : course.isPublished
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {course.isDeleted ? 'Đã xóa mềm' : course.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
                       </span>
                     </div>
-                    <p className="mb-3 text-sm text-gray-500 line-clamp-2">{course.description}</p>
+                    <p className="mb-3 text-sm text-gray-500 line-clamp-2">{course.description || 'Chưa có mô tả'}</p>
                     <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                       <span>Giá: {Number(course.price || 0).toLocaleString('vi-VN')}đ</span>
                       <span className="flex items-center gap-1"><Users className="h-4 w-4" />GV: {course.instructorId}</span>

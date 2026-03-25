@@ -16,6 +16,9 @@ public interface CourseRepository extends MongoRepository<Course, String> {
     /** Returns all courses that have NOT been soft-deleted */
     List<Course> findAllByIsDeletedFalse();
 
+    /** Returns active courses owned by instructor */
+    List<Course> findByInstructorIdAndIsDeletedFalse(String instructorId);
+
     /** Find a course by ID only if not deleted */
     java.util.Optional<Course> findByIdAndIsDeletedFalse(String id);
 }

@@ -89,11 +89,12 @@ public class ExamAttemptController {
                description = "View all student attempts for a specific exam")
     public ResponseEntity<ApiResponse<Page<ExamAttemptResponse>>> getAttemptsByExam(
             @PathVariable String examId,
+            @RequestHeader(value = "X-User-Id", defaultValue = "instructor1") String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by("submittedAt").descending());
-        Page<ExamAttemptResponse> response = attemptService.getAttemptsByExam(examId, pageable);
+        Page<ExamAttemptResponse> response = attemptService.getAttemptsByExam(examId, userId, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
     

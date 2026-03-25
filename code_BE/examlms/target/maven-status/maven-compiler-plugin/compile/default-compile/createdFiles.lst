@@ -7,6 +7,7 @@ kaleidoscope\j2ee\examlms\repository\UserRepository.class
 kaleidoscope\j2ee\examlms\service\impl\ExamAttemptServiceImpl$1.class
 kaleidoscope\j2ee\examlms\dto\response\UserProfileResponse$UserProfileResponseBuilder.class
 kaleidoscope\j2ee\examlms\dto\response\ExamAttemptResponse.class
+kaleidoscope\j2ee\examlms\dto\response\AdminUserResponse$AdminUserResponseBuilder.class
 kaleidoscope\j2ee\examlms\repository\CommentRepository.class
 kaleidoscope\j2ee\examlms\entity\Course.class
 kaleidoscope\j2ee\examlms\entity\ExamAttempt.class
@@ -54,6 +55,7 @@ kaleidoscope\j2ee\examlms\dto\response\ApiResponse.class
 kaleidoscope\j2ee\examlms\controller\HealthCheckController.class
 kaleidoscope\j2ee\examlms\service\impl\ExamAttemptServiceImpl.class
 kaleidoscope\j2ee\examlms\config\DataInitializer.class
+kaleidoscope\j2ee\examlms\dto\response\InstructorRequestUserResponse.class
 kaleidoscope\j2ee\examlms\dto\request\ExamSubmitRequest.class
 kaleidoscope\j2ee\examlms\controller\ExamAttemptController.class
 kaleidoscope\j2ee\examlms\entity\Chapter.class
@@ -78,6 +80,7 @@ kaleidoscope\j2ee\examlms\repository\ExamAttemptRepository.class
 kaleidoscope\j2ee\examlms\dto\response\ExcelImportResponse$ExcelImportResponseBuilder.class
 kaleidoscope\j2ee\examlms\dto\request\RefreshTokenRequest.class
 kaleidoscope\j2ee\examlms\service\impl\ExcelImportServiceImpl$1.class
+kaleidoscope\j2ee\examlms\dto\response\CertificateResponse.class
 kaleidoscope\j2ee\examlms\repository\ExamRepository.class
 kaleidoscope\j2ee\examlms\entity\RefreshToken$RefreshTokenBuilder.class
 kaleidoscope\j2ee\examlms\controller\ProgressController.class
@@ -116,6 +119,7 @@ kaleidoscope\j2ee\examlms\utils\FileStorageUtil.class
 kaleidoscope\j2ee\examlms\dto\request\EnrollmentRequest.class
 kaleidoscope\j2ee\examlms\dto\request\ExamCreateRequest.class
 kaleidoscope\j2ee\examlms\service\impl\QuestionServiceImpl$1.class
+kaleidoscope\j2ee\examlms\dto\response\CertificateResponse$CertificateResponseBuilder.class
 kaleidoscope\j2ee\examlms\repository\CourseRepository.class
 kaleidoscope\j2ee\examlms\entity\ExamQuestion.class
 kaleidoscope\j2ee\examlms\dto\request\UpdateProfileRequest.class
@@ -137,8 +141,10 @@ kaleidoscope\j2ee\examlms\entity\RefreshToken.class
 kaleidoscope\j2ee\examlms\dto\request\QuestionCreateRequest.class
 kaleidoscope\j2ee\examlms\service\ExamGeneratorService.class
 kaleidoscope\j2ee\examlms\dto\request\QuestionGradeRequest.class
+kaleidoscope\j2ee\examlms\dto\response\InstructorRequestUserResponse$InstructorRequestUserResponseBuilder.class
 kaleidoscope\j2ee\examlms\entity\User.class
 kaleidoscope\j2ee\examlms\controller\CourseController.class
+kaleidoscope\j2ee\examlms\dto\request\UpdateUserRoleRequest.class
 kaleidoscope\j2ee\examlms\dto\response\LessonResponse$LessonResponseBuilder.class
 kaleidoscope\j2ee\examlms\service\ChapterService.class
 kaleidoscope\j2ee\examlms\controller\VNPayPaymentController.class
@@ -151,10 +157,12 @@ kaleidoscope\j2ee\examlms\dto\response\ExamResultResponse$QuestionResult.class
 kaleidoscope\j2ee\examlms\service\impl\GradingServiceImpl.class
 kaleidoscope\j2ee\examlms\entity\Lesson$LessonBuilder.class
 kaleidoscope\j2ee\examlms\exception\ProgressException.class
+kaleidoscope\j2ee\examlms\dto\response\AdminUserResponse.class
 kaleidoscope\j2ee\examlms\service\ExcelImportService.class
 kaleidoscope\j2ee\examlms\service\impl\CertificateServiceImpl.class
 kaleidoscope\j2ee\examlms\service\impl\CourseServiceImpl.class
 kaleidoscope\j2ee\examlms\dto\response\EnrollmentResponse.class
+kaleidoscope\j2ee\examlms\controller\AdminUserController.class
 kaleidoscope\j2ee\examlms\service\ExamAttemptService.class
 kaleidoscope\j2ee\examlms\controller\UserController.class
 kaleidoscope\j2ee\examlms\entity\enums\InstructorRequestStatus.class
@@ -163,6 +171,7 @@ kaleidoscope\j2ee\examlms\entity\Chapter$ChapterBuilder.class
 kaleidoscope\j2ee\examlms\exception\GlobalExceptionHandler.class
 kaleidoscope\j2ee\examlms\dto\request\CreateInstructorRequest.class
 kaleidoscope\j2ee\examlms\service\impl\ChapterServiceImpl.class
+kaleidoscope\j2ee\examlms\dto\request\UpdateUserStatusRequest.class
 kaleidoscope\j2ee\examlms\dto\request\ExamGenerateRequest.class
 kaleidoscope\j2ee\examlms\service\impl\VNPayPaymentServiceImpl.class
 kaleidoscope\j2ee\examlms\service\QuestionService.class

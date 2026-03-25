@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import kaleidoscope.j2ee.examlms.dto.request.EnrollmentRequest;
 import kaleidoscope.j2ee.examlms.dto.response.ApiResponse;
+import kaleidoscope.j2ee.examlms.dto.response.CourseMemberResponse;
 import kaleidoscope.j2ee.examlms.dto.response.EnrollmentResponse;
 import kaleidoscope.j2ee.examlms.service.EnrollmentService;
 
@@ -46,6 +47,34 @@ public class EnrollmentController {
                 .code(1000)
                 .message("Success")
                 .result(courses)
+                .build();
+    }
+
+    @GetMapping("/course/{courseId}/members")
+    public ApiResponse<List<CourseMemberResponse>> getCourseMembers(
+            @PathVariable String courseId,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", defaultValue = "") String instructorId) {
+
+        List<CourseMemberResponse> members = enrollmentService.getCourseMembers(instructorId, courseId);
+
+        return ApiResponse.<List<CourseMemberResponse>>builder()
+                .code(1000)
+                .message("Success")
+                .result(members)
+                .build();
+    }
+
+    @GetMapping("/instructor/{instructorId}/course/{courseId}/members")
+    public ApiResponse<List<CourseMemberResponse>> getCourseMembersByInstructor(
+            @PathVariable String instructorId,
+            @PathVariable String courseId) {
+
+        List<CourseMemberResponse> members = enrollmentService.getCourseMembers(instructorId, courseId);
+
+        return ApiResponse.<List<CourseMemberResponse>>builder()
+                .code(1000)
+                .message("Success")
+                .result(members)
                 .build();
     }
 }

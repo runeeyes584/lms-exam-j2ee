@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -65,6 +66,24 @@ public class CertificateServiceImpl implements CertificateService {
         }
 
         @Override
+        public boolean autoIssueCertificateIfCompleted(String userId, String courseId) {
+                UserCourse userCourse = userCourseRepository
+                                .findByUserIdAndCourseId(userId, courseId)
+                                .orElseThrow(() -> new CertificateException("Enrollment not found"));
+
+                if (userCourse.getProgressPercent() == null || userCourse.getProgressPercent() < 100) {
+                        return false;
+                }
+
+                if (certificateRepository.findByUserIdAndCourseId(userId, courseId).isPresent()) {
+                        return false;
+                }
+
+                createNewCertificate(userId, courseId);
+                return true;
+        }
+
+        @Override
         public List<CertificateResponse> getMyCertificates(String userId) {
                 return certificateRepository.findByUserId(userId).stream()
                                 .map(certificate -> {
@@ -74,10 +93,16 @@ public class CertificateServiceImpl implements CertificateService {
                                         return CertificateResponse.builder()
                                                         .id(certificate.getId())
                                                         .courseId(certificate.getCourseId())
-                                                        .courseName(course != null ? course.getTitle() : certificate.getCourseId())
-                                                        .studentName(user != null ? user.getFullName() : certificate.getUserId())
+                                                        .courseName(certificate.getCourseName() != null
+                                                                        ? certificate.getCourseName()
+                                                                        : (course != null ? course.getTitle() : certificate.getCourseId()))
+                                                        .studentName(certificate.getStudentName() != null
+                                                                        ? certificate.getStudentName()
+                                                                        : (user != null ? user.getFullName() : certificate.getUserId()))
                                                         .issuedAt(certificate.getIssuedAt())
-                                                        .certificateNumber(certificate.getId())
+                                                        .certificateNumber(certificate.getCertificateNumber() != null
+                                                                        ? certificate.getCertificateNumber()
+                                                                        : certificate.getId())
                                                         .build();
                                 })
                                 .toList();
@@ -86,6 +111,30 @@ public class CertificateServiceImpl implements CertificateService {
         @Override
         public String getCertificateFile(String userId, String courseId) {
                 return generateCertificate(userId, courseId);
+        }
+
+        @Override
+        public CertificateResponse verifyCertificate(String certificateNumber) {
+                Certificate certificate = certificateRepository.findByCertificateNumber(certificateNumber)
+                                .orElseThrow(() -> new CertificateException("Certificate not found"));
+
+                User user = userRepository.findById(certificate.getUserId()).orElse(null);
+                Course course = courseRepository.findById(certificate.getCourseId()).orElse(null);
+
+                return CertificateResponse.builder()
+                                .id(certificate.getId())
+                                .courseId(certificate.getCourseId())
+                                .courseName(certificate.getCourseName() != null
+                                                ? certificate.getCourseName()
+                                                : (course != null ? course.getTitle() : certificate.getCourseId()))
+                                .studentName(certificate.getStudentName() != null
+                                                ? certificate.getStudentName()
+                                                : (user != null ? user.getFullName() : certificate.getUserId()))
+                                .issuedAt(certificate.getIssuedAt())
+                                .certificateNumber(certificate.getCertificateNumber() != null
+                                                ? certificate.getCertificateNumber()
+                                                : certificate.getId())
+                                .build();
         }
 
         private String createNewCertificate(String userId, String courseId) {
@@ -99,10 +148,15 @@ public class CertificateServiceImpl implements CertificateService {
                         String userName = user.getFullName();
                         String courseName = course.getTitle();
 
-                        String folderPath = "certificates/";
+                        String folderPath = "upload/certificates/";
                         new File(folderPath).mkdirs();
 
-                        String fileName = "certificate_" + System.currentTimeMillis() + ".pdf";
+                        String certificateNumber = "CERT-"
+                                        + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                                        + "-"
+                                        + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                        String sanitized = certificateNumber.replaceAll("[^A-Z0-9\\-]", "");
+                        String fileName = "certificate_" + sanitized + ".pdf";
                         String fullPath = folderPath + fileName;
 
                         PdfWriter writer = new PdfWriter(fullPath);
@@ -219,6 +273,10 @@ public class CertificateServiceImpl implements CertificateService {
                         Certificate certificate = Certificate.builder()
                                         .userId(userId)
                                         .courseId(courseId)
+                                        .certificateNumber(certificateNumber)
+                                        .studentName(user.getFullName())
+                                        .studentEmail(user.getEmail())
+                                        .courseName(course.getTitle())
                                         .filePath(fullPath)
                                         .issuedAt(LocalDateTime.now())
                                         .build();

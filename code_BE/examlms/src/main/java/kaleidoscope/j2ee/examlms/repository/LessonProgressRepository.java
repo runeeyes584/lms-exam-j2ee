@@ -1,5 +1,6 @@
 package kaleidoscope.j2ee.examlms.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -13,5 +14,7 @@ public interface LessonProgressRepository extends MongoRepository<LessonProgress
     long countByUserIdAndCourseId(String userId, String courseId);
 
     long countByUserIdAndCourseIdAndCompletedTrue(String userId, String courseId);
+
+    List<LessonProgress> findByUserIdAndCourseIdAndCompletedTrue(String userId, String courseId);
 
 }

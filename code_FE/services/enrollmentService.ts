@@ -19,21 +19,32 @@ export interface EnrollmentResponse {
   lastAccessedAt?: string;
 }
 
+export interface CourseMemberResponse {
+  userId: string;
+  fullName?: string;
+  email?: string;
+  enrolledAt: string;
+  progressPercent: number;
+}
+
 export interface ProgressUpdateRequest {
+  userId: string;
   courseId: string;
   lessonId: string;
   completed: boolean;
-  watchTime?: number;
+  lastWatchedSecond?: number;
 }
 
 export interface ProgressResponse {
-  userId: string;
+  userId?: string;
   courseId: string;
-  completedLessons: string[];
+  completedLessons?: number | string[];
+  completedLessonIds?: string[];
   totalLessons: number;
-  progressPercentage: number;
-  totalWatchTime: number;
-  lastAccessedAt: string;
+  progressPercent?: number;
+  progressPercentage?: number;
+  totalWatchTime?: number;
+  lastAccessedAt?: string;
 }
 
 export const enrollmentService = {
@@ -62,12 +73,33 @@ export const enrollmentService = {
   getMyEnrollments: async (userId: string): Promise<ApiResponse<EnrollmentResponse[]>> => {
     return enrollmentService.getByUser(userId);
   },
+
+  // Get course members (instructor)
+  getCourseMembers: async (courseId: string, instructorId?: string): Promise<ApiResponse<CourseMemberResponse[]>> => {
+    const endpoint = instructorId
+      ? `/enrollments/instructor/${instructorId}/course/${courseId}/members`
+      : `/enrollments/course/${courseId}/members`;
+    const response = await api.get(endpoint);
+    return {
+      ...response.data,
+      result: (response.data.result || []).map((item: any) => ({
+        ...item,
+        progressPercent: Number(item.progressPercent ?? 0),
+      })),
+    };
+  },
 };
 
 export const progressService = {
   // Update progress
   update: async (data: ProgressUpdateRequest): Promise<ApiResponse<void>> => {
-    const response = await api.post('/progress', data);
+    const response = await api.post('/progress', {
+      userId: data.userId,
+      courseId: data.courseId,
+      lessonId: data.lessonId,
+      completed: data.completed,
+      lastWatchedSecond: data.lastWatchedSecond ?? 0,
+    });
     return response.data;
   },
 

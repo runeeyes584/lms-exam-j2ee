@@ -72,9 +72,23 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
   if (authLoading || loading) return <PageLoading message="Đang tải kết quả..." />;
   if (!attempt) return null;
 
-  const totalMax = attempt.questionResults?.reduce((s, q) => s + q.maxScore, 0) || 100;
-  const correct = attempt.questionResults?.filter(q => q.isCorrect).length || 0;
-  const total = attempt.questionResults?.length || 0;
+  const safeNumber = (value: unknown) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const reviewItems = Array.isArray(attempt.questionResults) ? attempt.questionResults : [];
+  const totalMaxFromReview = reviewItems.reduce((sum, item) => sum + safeNumber(item.maxScore), 0);
+  const totalMaxFromExam = safeNumber((attempt as any)?.exam?.totalPoints);
+  const totalMax = totalMaxFromReview > 0 ? totalMaxFromReview : totalMaxFromExam > 0 ? totalMaxFromExam : 100;
+
+  const totalScore = safeNumber(attempt.totalScore);
+  const percentageFromApi = safeNumber(attempt.percentage);
+  const derivedPercentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+  const displayPercentage = percentageFromApi > 0 ? percentageFromApi : derivedPercentage;
+
+  const correct = reviewItems.filter(q => q.isCorrect).length;
+  const total = reviewItems.length;
   const duration = attempt.endTime && attempt.startTime
     ? Math.round((new Date(attempt.endTime).getTime() - new Date(attempt.startTime).getTime()) / 60000)
     : null;
@@ -97,18 +111,18 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
 
           <div className="mb-6 inline-block">
             <span className={`text-6xl font-bold ${attempt.passed ? 'text-green-600' : 'text-red-500'}`}>
-              {attempt.percentage}%
+              {displayPercentage}%
             </span>
-            <p className="mt-1 text-gray-500">{attempt.totalScore} / {totalMax} điểm</p>
+            <p className="mt-1 text-gray-500">{totalScore} / {totalMax} điểm</p>
           </div>
 
           <div className="grid grid-cols-3 gap-4 rounded-xl bg-white/60 p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-800">{correct}/{total}</p>
+              <p className="text-2xl font-bold text-gray-800">{total > 0 ? `${correct}/${total}` : '--'}</p>
               <p className="text-xs text-gray-500">Câu đúng</p>
             </div>
             <div className="text-center border-x">
-              <p className="text-2xl font-bold text-gray-800">{attempt.percentage}%</p>
+              <p className="text-2xl font-bold text-gray-800">{displayPercentage}%</p>
               <p className="text-xs text-gray-500">Điểm số</p>
             </div>
             <div className="text-center">
@@ -143,13 +157,13 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Question Review */}
-      {attempt.questionResults && attempt.questionResults.length > 0 && (
+      {reviewItems.length > 0 && (
         <Card>
           <CardHeader className="border-b">
             <CardTitle className="text-base">Review đáp án chi tiết</CardTitle>
           </CardHeader>
           <CardContent className="divide-y p-0">
-            {attempt.questionResults.map((q, idx) => {
+            {reviewItems.map((q, idx) => {
               const isExpanded = expandedQuestion === q.questionId;
               return (
                 <div key={q.questionId} className="p-4">
@@ -184,13 +198,13 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
                         <div>
                           <span className="text-xs font-medium text-gray-500">Bạn chọn: </span>
                           <span className={`font-medium ${q.isCorrect ? 'text-green-700' : 'text-red-600'}`}>
-                            {q.selectedOptionIds.join(', ') || '(Không trả lời)'}
+                            {(q.selectedOptionIds || []).join(', ') || '(Không trả lời)'}
                           </span>
                         </div>
-                        {!q.isCorrect && q.correctOptionIds.length > 0 && (
+                        {!q.isCorrect && (q.correctOptionIds || []).length > 0 && (
                           <div>
                             <span className="text-xs font-medium text-gray-500">Đáp án đúng: </span>
-                            <span className="font-medium text-green-700">{q.correctOptionIds.join(', ')}</span>
+                            <span className="font-medium text-green-700">{(q.correctOptionIds || []).join(', ')}</span>
                           </div>
                         )}
                       </div>

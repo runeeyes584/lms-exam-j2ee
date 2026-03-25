@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -23,7 +24,26 @@ public class ExamAttemptResponse {
     private Double totalScore;
     private Double autoGradedScore;
     private Double manualGradedScore;
+    private Double totalMaxScore;
+    private Double percentage;
+    private Boolean passed;
+    private String examTitle;
     private AttemptStatus status;
     private String gradedBy;
     private LocalDateTime gradedAt;
+    private List<QuestionResult> questionResults = new ArrayList<>();
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class QuestionResult {
+        private String questionId;
+        private String questionContent;
+        private List<String> selectedOptionIds;
+        private List<String> correctOptionIds;
+        private boolean isCorrect;
+        private Double earnedScore;
+        private Double maxScore;
+        private String explanation;
+    }
 }

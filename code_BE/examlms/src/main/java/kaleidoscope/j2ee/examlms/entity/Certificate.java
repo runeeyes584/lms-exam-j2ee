@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Document(collection = "certificates")
+@Document(collection = "certificate")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,6 +23,10 @@ public class Certificate {
 
     private String userId;
     private String courseId;
+    private String certificateNumber;
+    private String studentName;
+    private String studentEmail;
+    private String courseName;
 
     private String filePath;
 

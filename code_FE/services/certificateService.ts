@@ -14,8 +14,8 @@ export interface CertificateResponse {
 
 export const certificateService = {
   // Generate certificate for user completion
-  generate: async (userId: string, courseId: string): Promise<ApiResponse<string>> => {
-    const response = await api.get(`/certificates/${userId}/${courseId}`);
+  generate: async (courseId: string): Promise<ApiResponse<string>> => {
+    const response = await api.get(`/certificates/${courseId}/generate`);
     return response.data;
   },
 

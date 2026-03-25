@@ -8,6 +8,7 @@ import kaleidoscope.j2ee.examlms.entity.GenerationType;
 import kaleidoscope.j2ee.examlms.entity.Question;
 import kaleidoscope.j2ee.examlms.repository.ExamRepository;
 import kaleidoscope.j2ee.examlms.repository.QuestionRepository;
+import kaleidoscope.j2ee.examlms.repository.UserCourseRepository;
 import kaleidoscope.j2ee.examlms.service.ExamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class ExamServiceImpl implements ExamService {
 
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
+    private final UserCourseRepository userCourseRepository;
 
     @Override
     public ExamResponse createExam(ExamCreateRequest request, String createdBy) {
@@ -123,9 +125,15 @@ public class ExamServiceImpl implements ExamService {
     }
 
     @Override
-    public List<ExamResponse> getPublishedExams() {
+    public List<ExamResponse> getPublishedExams(String studentId) {
         List<Exam> exams = examRepository.findByIsPublished(true);
         return exams.stream()
+            .filter(exam -> {
+                if (exam.getCourseId() == null || exam.getCourseId().isBlank()) {
+                    return true;
+                }
+                return userCourseRepository.findByUserIdAndCourseId(studentId, exam.getCourseId()).isPresent();
+            })
             .map(this::mapToResponse)
             .collect(Collectors.toList());
     }

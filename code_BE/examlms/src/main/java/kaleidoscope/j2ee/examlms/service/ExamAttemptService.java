@@ -38,7 +38,7 @@ public interface ExamAttemptService {
     /**
      * Get all attempts for an exam (instructor view)
      */
-    Page<ExamAttemptResponse> getAttemptsByExam(String examId, Pageable pageable);
+    Page<ExamAttemptResponse> getAttemptsByExam(String examId, String instructorId, Pageable pageable);
     
     /**
      * Get attempt details for review (includes correct answers)

@@ -107,8 +107,9 @@ public class ExamController {
     
     @GetMapping("/published")
     @Operation(summary = "Get all published exams")
-    public ResponseEntity<ApiResponse<List<ExamResponse>>> getPublishedExams() {
-        List<ExamResponse> response = examService.getPublishedExams();
+    public ResponseEntity<ApiResponse<List<ExamResponse>>> getPublishedExams(
+            @RequestHeader(value = "X-User-Id", defaultValue = "student1") String userId) {
+        List<ExamResponse> response = examService.getPublishedExams(userId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
     

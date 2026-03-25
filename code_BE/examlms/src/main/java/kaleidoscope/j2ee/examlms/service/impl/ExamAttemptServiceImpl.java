@@ -1,8 +1,11 @@
 package kaleidoscope.j2ee.examlms.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +21,7 @@ import kaleidoscope.j2ee.examlms.entity.StudentAnswer;
 import kaleidoscope.j2ee.examlms.repository.ExamAttemptRepository;
 import kaleidoscope.j2ee.examlms.repository.ExamRepository;
 import kaleidoscope.j2ee.examlms.repository.QuestionRepository;
+import kaleidoscope.j2ee.examlms.repository.UserCourseRepository;
 import kaleidoscope.j2ee.examlms.service.ExamAttemptService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +34,7 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
     private final ExamAttemptRepository attemptRepository;
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
+    private final UserCourseRepository userCourseRepository;
 
     @Override
     public ExamAttemptResponse startExam(String examId, String studentId) {
@@ -39,6 +44,11 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
 
         if (!exam.getIsPublished()) {
             throw new RuntimeException("Exam is not published yet");
+        }
+
+        if (exam.getCourseId() != null && !exam.getCourseId().isBlank()
+                && userCourseRepository.findByUserIdAndCourseId(studentId, exam.getCourseId()).isEmpty()) {
+            throw new RuntimeException("You are not enrolled in this course");
         }
 
         // Check if student already has an in-progress attempt
@@ -131,7 +141,7 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
     public ExamAttemptResponse getAttemptById(String attemptId) {
         ExamAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new RuntimeException("Attempt not found with id: " + attemptId));
-        return mapToResponse(attempt);
+        return mapToResponse(attempt, false);
     }
 
     @Override
@@ -145,7 +155,14 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
     }
 
     @Override
-    public Page<ExamAttemptResponse> getAttemptsByExam(String examId, Pageable pageable) {
+    public Page<ExamAttemptResponse> getAttemptsByExam(String examId, String instructorId, Pageable pageable) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Exam not found with id: " + examId));
+
+        if (exam.getCreatedBy() == null || !exam.getCreatedBy().equals(instructorId)) {
+            throw new RuntimeException("You do not have permission to view attempts for this exam");
+        }
+
         Page<ExamAttempt> attempts = attemptRepository.findByExamId(examId, pageable);
         return attempts.map(this::mapToResponse);
     }
@@ -165,7 +182,7 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
             throw new RuntimeException("Cannot review. Exam is still in progress.");
         }
 
-        return mapToResponse(attempt);
+        return mapToResponse(attempt, true);
     }
 
     /**
@@ -255,6 +272,10 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
     }
 
     private ExamAttemptResponse mapToResponse(ExamAttempt attempt) {
+        return mapToResponse(attempt, false);
+    }
+
+    private ExamAttemptResponse mapToResponse(ExamAttempt attempt, boolean includeQuestionResults) {
         ExamAttemptResponse response = new ExamAttemptResponse();
         response.setId(attempt.getId());
         response.setExamId(attempt.getExamId());
@@ -269,6 +290,107 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
         response.setStatus(attempt.getStatus());
         response.setGradedBy(attempt.getGradedBy());
         response.setGradedAt(attempt.getGradedAt());
+
+        Exam exam = examRepository.findById(attempt.getExamId()).orElse(null);
+        response.setExamTitle(exam != null ? exam.getTitle() : null);
+
+        double effectiveTotalScore = attempt.getTotalScore() != null
+                ? attempt.getTotalScore()
+                : (attempt.getAutoGradedScore() != null ? attempt.getAutoGradedScore() : 0.0)
+                    + (attempt.getManualGradedScore() != null ? attempt.getManualGradedScore() : 0.0);
+        response.setTotalScore(effectiveTotalScore);
+
+        double totalMaxScore = exam != null && exam.getTotalPoints() != null
+                ? exam.getTotalPoints()
+                : 100.0;
+        response.setTotalMaxScore(totalMaxScore);
+
+        double percentage = totalMaxScore > 0
+                ? Math.round((effectiveTotalScore / totalMaxScore) * 10000.0) / 100.0
+                : 0.0;
+        response.setPercentage(percentage);
+
+        double passingScore = exam != null && exam.getPassingScore() != null
+                ? exam.getPassingScore()
+                : 0.0;
+        response.setPassed(percentage >= passingScore);
+
+        if (includeQuestionResults) {
+            response.setQuestionResults(buildQuestionResults(attempt));
+        }
+
         return response;
+    }
+
+    private List<ExamAttemptResponse.QuestionResult> buildQuestionResults(ExamAttempt attempt) {
+        if (attempt.getAnswers() == null || attempt.getAnswers().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ExamAttemptResponse.QuestionResult> results = new ArrayList<>();
+
+        for (StudentAnswer answer : attempt.getAnswers()) {
+            Question question = questionRepository.findById(answer.getQuestionId()).orElse(null);
+            if (question == null) {
+                continue;
+            }
+
+            double maxScore = question.getPoints() != null ? question.getPoints() : 0.0;
+            double earnedScore = gradeQuestion(question, answer);
+            boolean isCorrect = Double.compare(earnedScore, maxScore) == 0 && maxScore > 0;
+
+            List<String> selectedTexts = extractSelectedTexts(question, answer);
+            List<String> correctTexts = extractCorrectTexts(question);
+
+            results.add(new ExamAttemptResponse.QuestionResult(
+                    question.getId(),
+                    question.getContent(),
+                    selectedTexts,
+                    correctTexts,
+                    isCorrect,
+                    earnedScore,
+                    maxScore,
+                    question.getExplanation()
+            ));
+        }
+
+        return results;
+    }
+
+    private List<String> extractSelectedTexts(Question question, StudentAnswer answer) {
+        if (question.getType() == kaleidoscope.j2ee.examlms.entity.QuestionType.FILL_IN) {
+            return answer.getFillAnswer() == null || answer.getFillAnswer().trim().isEmpty()
+                    ? Collections.emptyList()
+                    : List.of(answer.getFillAnswer().trim());
+        }
+
+        if (answer.getSelectedOptions() == null || answer.getSelectedOptions().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return answer.getSelectedOptions().stream()
+                .map(index -> (index >= 0 && index < question.getOptions().size())
+                        ? question.getOptions().get(index).getText()
+                        : null)
+                .filter(value -> value != null && !value.isBlank())
+                .collect(Collectors.toList());
+    }
+
+    private List<String> extractCorrectTexts(Question question) {
+        if (question.getType() == kaleidoscope.j2ee.examlms.entity.QuestionType.FILL_IN) {
+            return question.getCorrectAnswer() == null || question.getCorrectAnswer().isBlank()
+                    ? Collections.emptyList()
+                    : List.of(question.getCorrectAnswer());
+        }
+
+        if (question.getOptions() == null || question.getOptions().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return question.getOptions().stream()
+                .filter(option -> Boolean.TRUE.equals(option.getIsCorrect()))
+                .map(option -> option.getText())
+                .filter(value -> value != null && !value.isBlank())
+                .collect(Collectors.toList());
     }
 }

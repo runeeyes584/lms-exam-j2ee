@@ -12,4 +12,6 @@ public interface CertificateRepository extends MongoRepository<Certificate, Stri
 
     List<Certificate> findByUserId(String userId);
 
+    Optional<Certificate> findByCertificateNumber(String certificateNumber);
+
 }

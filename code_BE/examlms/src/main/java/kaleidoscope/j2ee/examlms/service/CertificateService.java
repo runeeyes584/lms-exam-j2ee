@@ -12,4 +12,8 @@ public interface CertificateService {
 
     String getCertificateFile(String userId, String courseId);
 
+    boolean autoIssueCertificateIfCompleted(String userId, String courseId);
+
+    CertificateResponse verifyCertificate(String certificateNumber);
+
 }

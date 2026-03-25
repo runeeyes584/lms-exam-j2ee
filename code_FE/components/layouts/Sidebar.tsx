@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   BookOpen,
+  Library,
   FileText,
   GraduationCap,
   Users,
@@ -39,6 +40,12 @@ const navItems: NavItem[] = [
     title: 'Khóa học của tôi',
     href: '/student/courses',
     icon: BookOpen,
+    roles: ['STUDENT'],
+  },
+  {
+    title: 'Kho khóa học',
+    href: '/student/catalog',
+    icon: Library,
     roles: ['STUDENT'],
   },
   {
@@ -80,7 +87,7 @@ const navItems: NavItem[] = [
     roles: ['INSTRUCTOR', 'ADMIN'],
   },
   {
-    title: 'Học viên',
+    title: 'Lớp của tôi',
     href: '/instructor/students',
     icon: Users,
     roles: ['INSTRUCTOR', 'ADMIN'],

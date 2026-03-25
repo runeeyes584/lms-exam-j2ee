@@ -5,10 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageLoading } from '@/components/ui/loading';
-import { ArrowLeft, Edit, Trash2, Eye, EyeOff, Users, BookOpen, Clock, Tag, ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Eye, EyeOff, Users, BookOpen, Clock, Tag, ChevronDown, ChevronRight, FileText, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { courseService, CourseResponse, chapterService, ChapterResponse, lessonService, LessonResponse } from '@/services/courseService';
-import { ResponseCode } from '@/types/types';
+import { courseService, CourseRequest, CourseResponse, chapterService, ChapterResponse, lessonService, LessonResponse } from '@/services/courseService';
+import { enrollmentService, CourseMemberResponse } from '@/services/enrollmentService';
+import { isSuccess } from '@/types/types';
 import { toast } from 'react-hot-toast';
 
 export default function CourseDetailPage() {
@@ -19,8 +20,10 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState<CourseResponse | null>(null);
   const [chapters, setChapters] = useState<(ChapterResponse & { lessons: LessonResponse[] })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'students'>('overview');
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
+  const [members, setMembers] = useState<CourseMemberResponse[]>([]);
 
   useEffect(() => {
     fetchCourseData();
@@ -29,20 +32,20 @@ export default function CourseDetailPage() {
   const fetchCourseData = async () => {
     try {
       const courseResponse = await courseService.getById(courseId);
-      if (courseResponse.code === ResponseCode.SUCCESS && courseResponse.result) {
+      if (isSuccess(courseResponse.code) && courseResponse.result) {
         setCourse(courseResponse.result);
 
         // Fetch chapters
         try {
           const chaptersResponse = await chapterService.getByCourse(courseId);
-          if (chaptersResponse.code === ResponseCode.SUCCESS && chaptersResponse.result) {
+          if (isSuccess(chaptersResponse.code) && chaptersResponse.result) {
             const chaptersWithLessons = await Promise.all(
               chaptersResponse.result.map(async (chapter) => {
                 try {
                   const lessonsResponse = await lessonService.getByChapter(chapter.id);
                   return {
                     ...chapter,
-                    lessons: lessonsResponse.code === ResponseCode.SUCCESS ? (lessonsResponse.result || []) : [],
+                    lessons: isSuccess(lessonsResponse.code) ? (lessonsResponse.result || []) : [],
                   };
                 } catch {
                   return { ...chapter, lessons: [] };
@@ -54,57 +57,46 @@ export default function CourseDetailPage() {
         } catch {
           setChapters([]);
         }
+
+        try {
+          const membersResponse = await enrollmentService.getCourseMembers(
+            courseId,
+            courseResponse.result.instructorId
+          );
+          if (isSuccess(membersResponse.code)) {
+            setMembers(membersResponse.result || []);
+          } else {
+            setMembers([]);
+          }
+        } catch {
+          setMembers([]);
+        }
       } else {
-        toast.error('Không tìm thấy khóa học');
-        router.push('/instructor/courses');
+        setError('Không tìm thấy khóa học');
       }
     } catch (error) {
       console.error('Error fetching course:', error);
-      // Mock data for demo
-      setCourse({
-        id: courseId,
-        title: 'Lập trình Java cơ bản',
-        description: 'Khóa học Java từ cơ bản đến nâng cao. Bạn sẽ học được cách xây dựng ứng dụng Java hoàn chỉnh.',
-        price: 500000,
-        instructorId: '1',
-        tags: ['java', 'programming', 'oop'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isPublished: true,
-        enrollmentCount: 25,
-        rating: 4.5,
-        chaptersCount: 5,
-      });
-      setChapters([
-        {
-          id: 'ch1', courseId, title: 'Chương 1: Giới thiệu Java', description: 'Tổng quan về ngôn ngữ Java', orderIndex: 0,
-          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-          lessons: [
-            { id: 'l1', chapterId: 'ch1', title: 'Bài 1: Java là gì?', content: 'Giới thiệu về Java', orderIndex: 0, duration: 15, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-            { id: 'l2', chapterId: 'ch1', title: 'Bài 2: Cài đặt JDK', content: 'Hướng dẫn cài đặt', orderIndex: 1, duration: 20, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          ],
-        },
-        {
-          id: 'ch2', courseId, title: 'Chương 2: Biến và kiểu dữ liệu', description: 'Các kiểu dữ liệu trong Java', orderIndex: 1,
-          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-          lessons: [
-            { id: 'l3', chapterId: 'ch2', title: 'Bài 3: Kiểu dữ liệu nguyên thủy', orderIndex: 0, duration: 25, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          ],
-        },
-      ]);
+      setError('Có lỗi xảy ra khi tải dữ liệu khóa học');
     } finally {
       setLoading(false);
     }
   };
 
+  const mapCourseToRequest = (courseData: CourseResponse, isPublished: boolean): CourseRequest => ({
+    title: courseData.title,
+    description: courseData.description || '',
+    price: Number(courseData.price || 0),
+    coverImage: courseData.coverImage || '',
+    tags: courseData.tags || [],
+    isPublished,
+    instructorId: courseData.instructorId,
+  });
+
   const handleTogglePublish = async () => {
     if (!course) return;
     try {
-      const response = await courseService.update(course.id, {
-        ...course,
-        isPublished: !course.isPublished,
-      });
-      if (response.code === ResponseCode.SUCCESS) {
+      const response = await courseService.update(course.id, mapCourseToRequest(course, !course.isPublished));
+      if (isSuccess(response.code)) {
         setCourse(prev => prev ? { ...prev, isPublished: !prev.isPublished } : prev);
         toast.success(course.isPublished ? 'Đã ẩn khóa học' : 'Đã xuất bản khóa học');
       }
@@ -117,7 +109,7 @@ export default function CourseDetailPage() {
     if (!course || !confirm('Bạn có chắc muốn xóa khóa học này? Hành động này không thể hoàn tác.')) return;
     try {
       const response = await courseService.delete(course.id);
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success('Đã xóa khóa học');
         router.push('/instructor/courses');
       } else {
@@ -137,7 +129,16 @@ export default function CourseDetailPage() {
   };
 
   if (loading) return <PageLoading message="Đang tải khóa học..." />;
-  if (!course) return null;
+  if (error || !course) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-gray-600">{error || 'Không có dữ liệu khóa học'}</p>
+          <Link href="/instructor/courses"><Button className="mt-4">Quay lại danh sách</Button></Link>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const totalLessons = chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
   const totalDuration = chapters.reduce((sum, ch) => sum + ch.lessons.reduce((s, l) => s + (l.duration || 0), 0), 0);
@@ -167,6 +168,9 @@ export default function CourseDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Link href={`/student/courses/${courseId}`}>
+            <Button variant="outline"><ExternalLink className="mr-2 h-4 w-4" />Preview</Button>
+          </Link>
           <Link href={`/instructor/courses/${courseId}/edit`}>
             <Button variant="outline"><Edit className="mr-2 h-4 w-4" />Chỉnh sửa</Button>
           </Link>
@@ -341,12 +345,36 @@ export default function CourseDetailPage() {
 
       {activeTab === 'students' && (
         <Card>
-          <CardContent className="p-8 text-center">
-            <Users className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Danh sách học viên</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              {course.enrollmentCount ? `Có ${course.enrollmentCount} học viên đã đăng ký khóa học này` : 'Chưa có học viên nào đăng ký'}
-            </p>
+          <CardHeader>
+            <CardTitle>Danh sách học viên</CardTitle>
+            <CardDescription>
+              {members.length > 0
+                ? `Có ${members.length} học viên đang theo học khóa này`
+                : 'Chưa có học viên tham gia khóa học'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {members.length === 0 ? (
+              <div className="py-8 text-center">
+                <Users className="mx-auto h-12 w-12 text-gray-300" />
+                <p className="mt-3 text-sm text-gray-500">Chưa có học viên nào đăng ký</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {members.map(member => (
+                  <div key={member.userId} className="flex flex-col gap-2 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">{member.fullName || `Học viên ${member.userId.slice(-6)}`}</p>
+                      <p className="text-sm text-gray-500">{member.email || member.userId}</p>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <p>Tham gia: {member.enrolledAt ? new Date(member.enrolledAt).toLocaleDateString('vi-VN') : '--'}</p>
+                      <p>Tiến độ: {Math.round(Number(member.progressPercent || 0))}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

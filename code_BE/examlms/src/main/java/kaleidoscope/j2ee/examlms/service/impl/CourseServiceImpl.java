@@ -28,6 +28,14 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
+    public List<CourseResponse> getCoursesByInstructorId(String instructorId) {
+        return courseRepository.findByInstructorIdAndIsDeletedFalse(instructorId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public CourseResponse getCourseById(String id) {
         Course course = courseRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + id));

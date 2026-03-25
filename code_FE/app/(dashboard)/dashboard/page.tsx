@@ -107,6 +107,7 @@ export default function DashboardPage() {
       case 'STUDENT':
         return [
           { label: 'Khóa học của tôi', href: '/student/courses', icon: BookOpen },
+          { label: 'Kho khóa học', href: '/student/catalog', icon: BookOpen },
           { label: 'Bài thi của tôi', href: '/student/exams', icon: FileText },
           { label: 'Chứng chỉ', href: '/student/certificates', icon: Award },
         ];

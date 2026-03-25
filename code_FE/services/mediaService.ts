@@ -53,6 +53,12 @@ export const mediaService = {
 
 // Certificate Service
 export const certificateService = {
+  // Generate/claim certificate for current user and course
+  generate: async (courseId: string): Promise<ApiResponse<string>> => {
+    const response = await api.get(`/certificates/${courseId}/generate`);
+    return response.data;
+  },
+
   // Get my certificates
   getMyCertificates: async (): Promise<ApiResponse<any[]>> => {
     const response = await api.get('/certificates/my');

@@ -43,6 +43,12 @@ public class CourseController {
         return ResponseEntity.ok(ApiResponse.success(courseService.getCourseById(id)));
     }
 
+    /** GET /api/v1/courses/instructor/{instructorId} — List active courses owned by instructor */
+    @GetMapping("/instructor/{instructorId}")
+    public ResponseEntity<ApiResponse<List<CourseResponse>>> getCoursesByInstructor(@PathVariable String instructorId) {
+        return ResponseEntity.ok(ApiResponse.success(courseService.getCoursesByInstructorId(instructorId)));
+    }
+
     /** POST /api/v1/courses — Create a course */
     @PostMapping
     public ResponseEntity<ApiResponse<CourseResponse>> createCourse(@Valid @RequestBody CourseRequest request) {

@@ -13,4 +13,6 @@ public interface UserCourseRepository extends MongoRepository<UserCourse, String
 
     List<UserCourse> findByUserId(String userId);
 
+    List<UserCourse> findByCourseId(String courseId);
+
 }
