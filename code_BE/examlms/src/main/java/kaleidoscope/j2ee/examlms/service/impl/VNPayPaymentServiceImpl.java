@@ -63,13 +63,6 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
             String effectivePayUrl = resolveConfigValue("VNPAY_PAY_URL", payUrl);
             String effectiveReturnUrl = normalizeReturnUrl(resolveConfigValue("VNPAY_RETURN_URL", returnUrl));
 
-            log.info("VNPay createPaymentUrl called: userId={}, courseId={}, amount={}", userId, courseId, amount);
-            log.info("VNPay runtime config: tmnCode={}, payUrl={}, returnUrl={}, hashSecretHint={}",
-                effectiveTmnCode,
-                effectivePayUrl,
-                effectiveReturnUrl,
-                maskSecret(effectiveHashSecret));
-
             String txnRef = UUID.randomUUID().toString();
 
             // Lưu giao dịch vào DB với trạng thái PENDING
@@ -99,11 +92,6 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
 
             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
             params.put("vnp_CreateDate", formatter.format(new Date()));
-
-                log.info("VNPay request params before sign: vnp_TmnCode={}, vnp_ReturnUrl={}, vnp_TxnRef={}",
-                    params.get("vnp_TmnCode"),
-                    params.get("vnp_ReturnUrl"),
-                    params.get("vnp_TxnRef"));
 
             // ===== SORT FIELD NAMES =====
             List<String> fieldNames = new ArrayList<>(params.keySet());
@@ -138,8 +126,6 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
             query.append("&vnp_SecureHash=").append(secureHash);
 
             String paymentUrl = effectivePayUrl + "?" + query;
-
-            log.info("VNPay redirect URL generated: {}", sanitizePaymentUrl(paymentUrl));
 
             return paymentUrl;
 
@@ -207,23 +193,6 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
         }
 
         return sb.toString();
-    }
-
-    private String maskSecret(String secret) {
-        if (secret == null || secret.isBlank()) {
-            return "null";
-        }
-        if (secret.length() <= 8) {
-            return "****";
-        }
-        return secret.substring(0, 4) + "..." + secret.substring(secret.length() - 4);
-    }
-
-    private String sanitizePaymentUrl(String paymentUrl) {
-        if (paymentUrl == null || paymentUrl.isBlank()) {
-            return "null";
-        }
-        return paymentUrl.replaceAll("(vnp_SecureHash=)[^&]+", "$1***");
     }
 
     private String resolveConfigValue(String primaryKey, String fallbackValue) {
