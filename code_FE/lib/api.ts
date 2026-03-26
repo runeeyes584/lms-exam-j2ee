@@ -1,6 +1,15 @@
+import type {
+    ApiResponse,
+    AuthResponse,
+    AuthTokens,
+    LoginRequest,
+    RegisterRequest,
+    RegistrationInitResponse,
+    User,
+    VerifyRegistrationOtpRequest,
+} from '@/types/types';
+import { isSuccess } from '@/types/types';
 import axios from 'axios';
-import type { ApiResponse, AuthTokens, AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/types';
-import { ResponseCode, isSuccess } from '@/types/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
@@ -142,8 +151,18 @@ export const authApi = {
     return response.data;
   },
   
-  register: async (data: RegisterRequest): Promise<ApiResponse<User>> => {
+  register: async (data: RegisterRequest): Promise<ApiResponse<RegistrationInitResponse>> => {
     const response = await api.post('/auth/register', data);
+    return response.data;
+  },
+
+  verifyRegistrationOtp: async (data: VerifyRegistrationOtpRequest): Promise<ApiResponse<User>> => {
+    const response = await api.post('/auth/register/verify-otp', data);
+    return response.data;
+  },
+
+  resendRegistrationOtp: async (email: string): Promise<ApiResponse<RegistrationInitResponse>> => {
+    const response = await api.post('/auth/register/resend-otp', { email });
     return response.data;
   },
   

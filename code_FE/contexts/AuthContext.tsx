@@ -1,11 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
 import { authApi, tokenStorage } from '@/lib/api';
-import type { LoginRequest, RegisterRequest, User } from '@/types/types';
+import { useAuthStore } from '@/store/authStore';
+import type { LoginRequest, RegisterRequest, RegistrationInitResponse, User } from '@/types/types';
 import { isSuccess } from '@/types/types';
+import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -13,7 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<RegistrationInitResponse | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: RegisterRequest) => {
+  const register = async (data: RegisterRequest): Promise<RegistrationInitResponse | null> => {
     try {
       setLoading(true);
       setError(null);
@@ -116,16 +116,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.register(data);
       
       if (isSuccess(response.code)) {
-        toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
-        router.push('/login');
+        toast.success('Đã gửi mã OTP đến email của bạn.');
+        return response.result;
       } else {
         setError(response.message);
         toast.error(response.message || 'Đăng ký thất bại');
+        return null;
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Đã có lỗi xảy ra';
       setError(errorMessage);
       toast.error(errorMessage);
+      return null;
     } finally {
       setLoading(false);
     }

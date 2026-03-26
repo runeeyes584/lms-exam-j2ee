@@ -37,6 +37,12 @@ set VNPAY_HASH_SECRET=B0VFLDZ1BL7IJW0JG0PCN9BJ2685C5K8
 set VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
 set VNPAY_RETURN_URL=http://localhost:3000/vnpay/return
 
+REM Email SMTP Configuration (Gmail)
+set EMAIL_USER=superkuroemon01@gmail.com
+set EMAIL_PASS=rmgnxvdhxvfzraxp
+set OTP_EXPIRY_SECONDS=600
+set OTP_RESEND_COOLDOWN_SECONDS=60
+
 echo Environment variables loaded successfully!
 echo.
 echo Starting Spring Boot application...

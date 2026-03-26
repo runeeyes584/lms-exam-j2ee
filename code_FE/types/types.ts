@@ -50,6 +50,17 @@ export interface RegisterRequest {
   role?: 'STUDENT' | 'INSTRUCTOR';
 }
 
+export interface RegistrationInitResponse {
+  email: string;
+  resendCooldownSeconds: number;
+  expiresInSeconds: number;
+}
+
+export interface VerifyRegistrationOtpRequest {
+  email: string;
+  otp: string;
+}
+
 // User Types (Match Backend DTOs)
 export interface User {
   id: string;

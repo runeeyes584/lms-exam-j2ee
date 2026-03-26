@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 // Routes that don't require authentication
-const publicRoutes = ['/', '/login', '/register'];
+const publicRoutes = ['/', '/login', '/register', '/verify-otp'];
 
 // Routes that require authentication
 const protectedRoutes = ['/dashboard', '/student', '/instructor', '/admin'];
@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
   }
   
   // Redirect to dashboard if accessing auth pages with valid token
-  if ((pathname === '/login' || pathname === '/register') && accessToken) {
+  if ((pathname === '/login' || pathname === '/register' || pathname === '/verify-otp') && accessToken) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
   

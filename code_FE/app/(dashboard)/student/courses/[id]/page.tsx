@@ -2,40 +2,40 @@
 
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PageLoading } from '@/components/ui/loading';
+import StarRating from '@/components/ui/star-rating';
 import { useAuth } from '@/contexts/AuthContext';
 import { certificateService, commentService, reviewService, type ReviewStats, type ReviewViewModel } from '@/services';
 import {
-  chapterService,
-  courseService,
-  lessonService,
-  type ChapterResponse,
-  type CourseResponse,
-  type LessonResponse,
+    chapterService,
+    courseService,
+    lessonService,
+    type ChapterResponse,
+    type CourseResponse,
+    type LessonResponse,
 } from '@/services/courseService';
 import { progressService } from '@/services/enrollmentService';
 import { isSuccess } from '@/types/types';
 import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronRight,
-  Flag,
-  MoreHorizontal,
-  MessageSquare,
-  Pencil,
-  Plus,
-  Star,
-  Trash2,
+    CalendarDays,
+    CheckCircle2,
+    ChevronRight,
+    Flag,
+    MessageSquare,
+    MoreHorizontal,
+    Pencil,
+    Plus,
+    Star,
+    Trash2,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import StarRating from '@/components/ui/star-rating';
 
 interface ExtendedLesson extends LessonResponse {
   isCompleted?: boolean;
@@ -103,6 +103,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
   const [reviewComment, setReviewComment] = useState('');
   const [userReview, setUserReview] = useState<ReviewViewModel | null>(null);
   const [isEditingReview, setIsEditingReview] = useState(false);
+  const [isDeleteReviewModalOpen, setIsDeleteReviewModalOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -404,7 +405,6 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
 
   const handleDeleteReview = async () => {
     if (!user?.id || !userReview) return;
-    if (typeof window !== 'undefined' && !window.confirm('Bạn có chắc muốn xóa đánh giá này?')) return;
 
     try {
       const response = await reviewService.delete(userReview.id, user.id);
@@ -413,6 +413,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
         return;
       }
       toast.success('Đã xóa đánh giá');
+      setIsDeleteReviewModalOpen(false);
       await fetchReviewData(user.id);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Không thể xóa đánh giá');
@@ -928,7 +929,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                 <p className="text-sm text-gray-500">Đang tải đánh giá...</p>
               ) : (
                 <div className="space-y-4">
-                  <div className="rounded border p-4">
+                  <div className="group rounded border p-4">
                     <h3 className="text-base font-semibold text-gray-800">Tổng hợp đánh giá</h3>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="text-3xl font-bold text-gray-900">
@@ -958,7 +959,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                     </div>
                   </div>
 
-                  <div className="rounded border p-4">
+                  <div className="group rounded border p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="text-base font-semibold text-gray-800">Đánh giá của bạn</h3>
@@ -973,7 +974,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                              className="rounded p-1 text-gray-500 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700 focus-visible:opacity-100"
                               aria-label="Tùy chọn đánh giá"
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -984,7 +985,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                               <Pencil className="mr-2 h-4 w-4" />
                               Sửa
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600" onClick={handleDeleteReview}>
+                            <DropdownMenuItem className="text-red-600" onClick={() => setIsDeleteReviewModalOpen(true)}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               Xóa
                             </DropdownMenuItem>
@@ -992,29 +993,63 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                         </DropdownMenu>
                       )}
                     </div>
-                    <div className={`mt-3 space-y-3 ${userReview && !isEditingReview ? 'pointer-events-none opacity-60 blur-[1px]' : ''}`}>
-                      <div className="flex items-center gap-2">
-                        <StarRating value={reviewRating} onChange={setReviewRating} readOnly={userReview && !isEditingReview} />
-                        <span className="text-sm text-gray-600">{reviewRating}/5</span>
+                    {userReview && !isEditingReview ? (
+                      <div className="group mt-3 rounded-md border bg-gray-50 p-3">
+                        <div className="flex items-center gap-2">
+                          <StarRating value={reviewRating} readOnly />
+                          <span className="text-sm text-gray-600">{reviewRating}/5</span>
+                        </div>
+                        {reviewComment ? (
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{reviewComment}</p>
+                        ) : (
+                          <p className="mt-2 text-sm italic text-gray-500">Bạn chưa để lại bình luận.</p>
+                        )}
                       </div>
-                      <textarea
-                        value={reviewComment}
-                        onChange={e => setReviewComment(e.target.value)}
-                        rows={3}
-                        className="w-full rounded-md border px-3 py-2 text-sm"
-                        placeholder="Nhận xét của bạn..."
-                        disabled={userReview && !isEditingReview}
-                      />
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button onClick={handleSubmitReview} disabled={reviewSaving || (userReview && !isEditingReview)}>
-                        {reviewSaving ? 'Đang lưu...' : userReview ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
+                    ) : (
+                      <>
+                        <div className="mt-3 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <StarRating value={reviewRating} onChange={setReviewRating} readOnly={false} />
+                            <span className="text-sm text-gray-600">{reviewRating}/5</span>
+                          </div>
+                          <textarea
+                            value={reviewComment}
+                            onChange={e => setReviewComment(e.target.value)}
+                            rows={3}
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                            placeholder="Nhận xét của bạn..."
+                          />
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button onClick={handleSubmitReview} disabled={reviewSaving}>
+                            {reviewSaving ? 'Đang lưu...' : userReview ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
+                          </Button>
+                          {userReview && isEditingReview && (
+                            <Button variant="outline" onClick={() => setIsEditingReview(false)}>
+                              Hủy chỉnh sửa
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {isDeleteReviewModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+                  <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+                    <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa đánh giá</h3>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Bạn có chắc muốn xóa đánh giá này không? Hành động này không thể hoàn tác.
+                    </p>
+                    <div className="mt-4 flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsDeleteReviewModalOpen(false)}>
+                        Hủy
                       </Button>
-                      {userReview && isEditingReview && (
-                        <Button variant="outline" onClick={() => setIsEditingReview(false)}>
-                          Hủy chỉnh sửa
-                        </Button>
-                      )}
+                      <Button variant="destructive" onClick={handleDeleteReview}>
+                        Xóa đánh giá
+                      </Button>
                     </div>
                   </div>
                 </div>

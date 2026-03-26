@@ -1,16 +1,18 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { registerSchema, type RegisterFormData } from '@/lib/validations';
+import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 
 export default function RegisterPage() {
+  const router = useRouter();
   const { register: registerUser, isLoading } = useAuth();
 
   const {
@@ -30,10 +32,16 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     const { confirmPassword, ...registerData } = data;
-    await registerUser({
+    const result = await registerUser({
       ...registerData,
       role: 'STUDENT',
     });
+    if (!result) {
+      return;
+    }
+    const emailParam = encodeURIComponent(result.email);
+    const cooldownParam = encodeURIComponent(String(result.resendCooldownSeconds || 60));
+    router.push(`/verify-otp?email=${emailParam}&cooldown=${cooldownParam}`);
   };
 
   return (
