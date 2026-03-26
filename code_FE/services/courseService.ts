@@ -40,6 +40,7 @@ const normalizeCourse = (course: any): CourseResponse => ({
   tags: Array.isArray(course?.tags) ? course.tags : [],
   isPublished: Boolean(course?.isPublished),
   isDeleted: Boolean(course?.isDeleted),
+  rating: Number(course?.avgRating ?? course?.rating ?? 0),
 });
 
 export const courseService = {

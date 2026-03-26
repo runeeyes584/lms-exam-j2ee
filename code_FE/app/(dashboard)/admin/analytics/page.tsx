@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import { Activity, Award, BarChart3, BookOpen, Calendar, DollarSign, FileText, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { adminService, analyticsService, DashboardStats } from '@/services';
+import { analyticsService, DashboardStats } from '@/services';
 import { isSuccess } from '@/types/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { PageLoading } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -28,24 +27,21 @@ export default function AdminAnalyticsPage() {
   const { isLoading: authLoading } = useAuth();
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
-
+  const formatVnd = (value: number) => `${value.toLocaleString('vi-VN')} đ`;
   useEffect(() => {
     void fetchStats();
-  }, [period]);
+  }, []);
 
   const fetchStats = async () => {
     setLoading(true);
     try {
       const year = new Date().getFullYear();
-      const [dashboardResponse, usersResponse, newUsersResponse, revenueResponse] = await Promise.all([
+      const [dashboardResponse, newUsersResponse, revenueResponse] = await Promise.all([
         analyticsService.getDashboard(),
-        adminService.getAllUsers(0, 1000),
         analyticsService.getNewUsers(year),
         analyticsService.getRevenue(year),
       ]);
 
-      const users = isSuccess(usersResponse.code) ? extractList<any>(usersResponse.result) : [];
       const newUsers = isSuccess(newUsersResponse.code) ? extractList<any>(newUsersResponse.result) : [];
       const revenue = isSuccess(revenueResponse.code) ? extractList<any>(revenueResponse.result) : [];
       const dashboardData: any = isSuccess(dashboardResponse.code) ? dashboardResponse.result || {} : {};
@@ -56,15 +52,14 @@ export default function AdminAnalyticsPage() {
 
       setStats({
         ...dashboardData,
-        totalUsers: Number(dashboardData.totalUsers ?? users.length),
-        totalStudents: users.filter(user => user.role === 'STUDENT').length,
-        totalInstructors: users.filter(user => user.role === 'INSTRUCTOR').length,
+        totalUsers: Number(dashboardData.totalUsers ?? 0),
+        totalStudents: Number(dashboardData.totalStudents ?? 0),
+        totalInstructors: Number(dashboardData.totalInstructors ?? 0),
         totalCourses: Number(dashboardData.totalCourses ?? 0),
         totalExams: Number(dashboardData.totalExams ?? 0),
-        totalAttempts: Number(dashboardData.totalAttempts ?? dashboardData.totalOrders ?? 0),
+        totalAttempts: Number(dashboardData.totalAttempts ?? 0),
         totalRevenue: Number(dashboardData.totalRevenue ?? 0),
-        newUsersThisMonth: Number(dashboardData.newUsersThisMonth ?? 0),
-        activeUsersThisWeek: Number(dashboardData.activeUsersThisWeek ?? 0),
+        newUsersThisMonth: Number(dashboardData.newStudentsThisMonth ?? dashboardData.newUsersThisMonth ?? 0),
         totalOrders: Number(dashboardData.totalOrders ?? 0),
         totalReviews: Number(dashboardData.totalReviews ?? 0),
         recentActivity: newUsers.map((item: any) => {
@@ -106,7 +101,7 @@ export default function AdminAnalyticsPage() {
     { title: 'Đơn hàng', value: totalOrders.toLocaleString('vi-VN'), icon: FileText, color: 'bg-red-100 text-red-600' },
     { title: 'Lượt thi/đơn', value: totalAttempts.toLocaleString('vi-VN'), icon: Activity, color: 'bg-indigo-100 text-indigo-600' },
     { title: 'Đánh giá', value: totalReviews.toLocaleString('vi-VN'), icon: TrendingUp, color: 'bg-teal-100 text-teal-600' },
-    { title: 'Doanh thu', value: `${(totalRevenue / 1000000).toFixed(0)}M`, icon: DollarSign, color: 'bg-yellow-100 text-yellow-600' },
+    { title: 'Doanh thu', value: formatVnd(totalRevenue), icon: DollarSign, color: 'bg-yellow-100 text-yellow-600' },
   ];
 
   return (
@@ -115,13 +110,6 @@ export default function AdminAnalyticsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Báo cáo & Thống kê</h1>
           <p className="mt-2 text-gray-600">Trang này hiển thị dữ liệu thực tế từ API backend.</p>
-        </div>
-        <div className="flex gap-2">
-          {(['week', 'month', 'year'] as const).map(value => (
-            <Button key={value} variant={period === value ? 'default' : 'outline'} size="sm" onClick={() => setPeriod(value)}>
-              {value === 'week' ? '7 ngày' : value === 'month' ? '30 ngày' : '1 năm'}
-            </Button>
-          ))}
         </div>
       </div>
 
@@ -161,8 +149,8 @@ export default function AdminAnalyticsPage() {
                       <span className="text-sm font-medium text-gray-700">{item.label}</span>
                     </div>
                     <div className="flex gap-4 text-sm">
-                      <span className="text-blue-600"><Users className="mr-1 inline h-3 w-3" />{item.users} người dùng mới</span>
-                      <span className="text-green-600"><DollarSign className="mr-1 inline h-3 w-3" />{item.revenue.toLocaleString('vi-VN')}đ</span>
+                      <span className="text-blue-600"><Users className="mr-1 inline h-3 w-3" />{item.users} học viên mới</span>
+                      <span className="text-green-600"><DollarSign className="mr-1 inline h-3 w-3" />{formatVnd(item.revenue)}</span>
                     </div>
                   </div>
                 ))
@@ -217,9 +205,9 @@ export default function AdminAnalyticsPage() {
               <p className="mt-1 text-xs text-green-500">Giá trị backend trả về</p>
             </div>
             <div className="rounded-lg bg-purple-50 p-4">
-              <p className="text-sm font-medium text-purple-600">Người dùng hoạt động tuần này</p>
-              <p className="mt-1 text-xl font-bold text-purple-700">{Number(stats.activeUsersThisWeek ?? 0).toLocaleString('vi-VN')}</p>
-              <p className="mt-1 text-xs text-purple-500">Nếu backend chưa tính sẽ là 0</p>
+              <p className="text-sm font-medium text-purple-600">Học viên mới trong tháng</p>
+              <p className="mt-1 text-xl font-bold text-purple-700">{Number(stats.newUsersThisMonth ?? 0).toLocaleString('vi-VN')}</p>
+              <p className="mt-1 text-xs text-purple-500">Theo số liệu backend trả về</p>
             </div>
           </div>
         </CardContent>

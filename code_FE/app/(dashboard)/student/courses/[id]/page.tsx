@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PageLoading } from '@/components/ui/loading';
 import { useAuth } from '@/contexts/AuthContext';
-import { certificateService, commentService } from '@/services';
+import { certificateService, commentService, reviewService, type ReviewStats, type ReviewViewModel } from '@/services';
 import {
   chapterService,
   courseService,
@@ -29,11 +29,13 @@ import {
   MessageSquare,
   Pencil,
   Plus,
+  Star,
   Trash2,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import StarRating from '@/components/ui/star-rating';
 
 interface ExtendedLesson extends LessonResponse {
   isCompleted?: boolean;
@@ -48,13 +50,14 @@ interface DiscussionItem {
   id: string;
   userId: string;
   parentId?: string;
+  parentName?: string;
   content: string;
   createdAt: string;
   authorName: string;
   replies: DiscussionItem[];
 }
 
-type LearningTab = 'course' | 'progress' | 'important' | 'discussion';
+type LearningTab = 'course' | 'progress' | 'important' | 'discussion' | 'review';
 type WeeklyGoal = 'normal' | 'regular' | 'intensive';
 
 const tabs: Array<{ key: LearningTab; label: string }> = [
@@ -62,6 +65,7 @@ const tabs: Array<{ key: LearningTab; label: string }> = [
   { key: 'progress', label: 'Tiến độ' },
   { key: 'important', label: 'Ngày quan trọng' },
   { key: 'discussion', label: 'Thảo luận' },
+  { key: 'review', label: 'Đánh giá' },
 ];
 
 const goalOptions: Array<{ key: WeeklyGoal; title: string; subtitle: string; lessonsPerWeek: number }> = [
@@ -90,6 +94,15 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
   const [deleteTargetComment, setDeleteTargetComment] = useState<DiscussionItem | null>(null);
   const [claimingCertificate, setClaimingCertificate] = useState(false);
   const targetCommentId = searchParams.get('commentId');
+
+  const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
+  const [reviews, setReviews] = useState<ReviewViewModel[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [userReview, setUserReview] = useState<ReviewViewModel | null>(null);
+  const [isEditingReview, setIsEditingReview] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -126,6 +139,11 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
   useEffect(() => {
     if (activeTab !== 'discussion' || !user?.id) return;
     void fetchDiscussionsFromApi(user.id);
+  }, [activeTab, params.id, user?.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'review' || !user?.id) return;
+    void fetchReviewData(user.id);
   }, [activeTab, params.id, user?.id]);
 
   useEffect(() => {
@@ -259,10 +277,11 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
         setDiscussions([]);
         return;
       }
-      const mapComment = (comment: any): DiscussionItem => ({
+      const mapComment = (comment: any, parentName?: string): DiscussionItem => ({
         id: comment.id,
         userId: comment.userId,
         parentId: comment.parentId,
+        parentName,
         content: comment.content || '',
         createdAt: comment.createdAt,
         authorName: comment.userName || (comment.userId === userId ? user?.fullName || 'B?n' : '?n danh'),
@@ -281,7 +300,7 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
         const replyRes = repliesResult[index];
         const replies =
           replyRes.status === 'fulfilled' && isSuccess(replyRes.value.code)
-            ? (replyRes.value.result || []).map(mapComment).sort(
+            ? (replyRes.value.result || []).map(reply => mapComment(reply, comment.authorName)).sort(
                 (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
               )
             : [];
@@ -295,6 +314,110 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
       setDiscussions([]);
     }
   }
+
+  async function fetchReviewData(userId: string) {
+    setReviewLoading(true);
+    try {
+      const [statsRes, reviewsRes] = await Promise.all([
+        reviewService.getStats(params.id),
+        reviewService.getByCourseMapped(params.id, 0, 50),
+      ]);
+
+      const list = isSuccess(reviewsRes.code) ? (reviewsRes.result?.content || []) : [];
+      const stats = isSuccess(statsRes.code) ? statsRes.result : null;
+      const distribution = list.reduce(
+        (acc, item) => {
+          const key = Math.min(5, Math.max(1, Math.round(item.rating))) as 1 | 2 | 3 | 4 | 5;
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        },
+        { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1 | 2 | 3 | 4 | 5, number>
+      );
+
+      const normalizedStats: ReviewStats | null = stats
+        ? {
+            ...stats,
+            ratingDistribution: distribution,
+          }
+        : list.length > 0
+          ? {
+              averageRating:
+                list.reduce((sum, item) => sum + Number(item.rating || 0), 0) / list.length,
+              totalReviews: list.length,
+              ratingDistribution: distribution,
+            }
+          : null;
+
+      setReviewStats(normalizedStats);
+      setReviews(list);
+
+      const mine = list.find(item => item.user?.id === userId) || null;
+      setUserReview(mine);
+      setReviewRating(mine?.rating ?? 0);
+      setReviewComment(mine?.comment ?? '');
+      setIsEditingReview(false);
+    } catch (error) {
+      console.error('Error fetching review data:', error);
+      setReviewStats(null);
+      setReviews([]);
+      setUserReview(null);
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (!user?.id) return;
+    if (reviewRating < 1 || reviewRating > 5) {
+      toast.error('Vui lòng chọn số sao từ 1 đến 5');
+      return;
+    }
+
+    setReviewSaving(true);
+    try {
+      const payload = {
+        courseId: params.id,
+        userId: user.id,
+        userName: user.fullName,
+        userAvatar: user.avatarUrl,
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      };
+
+      const response = userReview
+        ? await reviewService.update(userReview.id, user.id, reviewRating, reviewComment.trim())
+        : await reviewService.create(payload);
+
+      if (!isSuccess(response.code)) {
+        toast.error(response.message || 'Không thể gửi đánh giá');
+        return;
+      }
+
+      toast.success(userReview ? 'Đã cập nhật đánh giá' : 'Đã gửi đánh giá');
+      await fetchReviewData(user.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Không thể gửi đánh giá');
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!user?.id || !userReview) return;
+    if (typeof window !== 'undefined' && !window.confirm('Bạn có chắc muốn xóa đánh giá này?')) return;
+
+    try {
+      const response = await reviewService.delete(userReview.id, user.id);
+      if (!isSuccess(response.code)) {
+        toast.error(response.message || 'Không thể xóa đánh giá');
+        return;
+      }
+      toast.success('Đã xóa đánh giá');
+      await fetchReviewData(user.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Không thể xóa đánh giá');
+    }
+  };
 
   const addDiscussion = async () => {
     const content = discussionDraft.trim();
@@ -705,13 +828,18 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
 
                       {replyTargetId === item.id && (
                         <div className="mt-3 flex gap-2">
-                          <textarea
-                            value={replyDraft}
-                            onChange={e => setReplyDraft(e.target.value)}
-                            rows={2}
-                            className="w-full rounded-md border px-3 py-2 text-sm"
-                            placeholder="Nhập phản hồi của bạn..."
-                          />
+                          <div className="flex-1">
+                            <div className="mb-1 text-xs text-gray-500">
+                              Đang trả lời <span className="font-medium text-gray-700">{item.authorName}</span>
+                            </div>
+                            <textarea
+                              value={replyDraft}
+                              onChange={e => setReplyDraft(e.target.value)}
+                              rows={2}
+                              className="w-full rounded-md border px-3 py-2 text-sm"
+                              placeholder="Nhập phản hồi của bạn..."
+                            />
+                          </div>
                           <Button onClick={() => addReply(item.id)}>Gửi</Button>
                         </div>
                       )}
@@ -749,6 +877,11 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                                   )}
                                 </div>
                               </div>
+                              {reply.parentName && (
+                                <div className="mb-1 text-xs text-gray-500">
+                                  Trả lời <span className="font-medium text-gray-700">{reply.parentName}</span>
+                                </div>
+                              )}
                               {editingCommentId === reply.id ? (
                                 <div className="space-y-2">
                                   <textarea
@@ -768,6 +901,141 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                             </div>
                           ))}
                         </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'review' && (
+            <div className="space-y-5 rounded border bg-white p-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">Đánh giá khóa học</h2>
+                  <p className="mt-1 text-sm text-gray-600">Chia sẻ trải nghiệm học tập của bạn.</p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Star className="h-4 w-4 text-yellow-500" />
+                  <span>
+                    {Number(reviewStats?.averageRating ?? 0).toFixed(1)} / 5 ({reviewStats?.totalReviews ?? reviews.length} đánh giá)
+                  </span>
+                </div>
+              </div>
+
+              {reviewLoading ? (
+                <p className="text-sm text-gray-500">Đang tải đánh giá...</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded border p-4">
+                    <h3 className="text-base font-semibold text-gray-800">Tổng hợp đánh giá</h3>
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="text-3xl font-bold text-gray-900">
+                        {Number(reviewStats?.averageRating ?? 0).toFixed(1)}
+                      </div>
+                      <StarRating value={Number(reviewStats?.averageRating ?? 0)} readOnly />
+                      <span className="text-sm text-gray-500">
+                        {reviewStats?.totalReviews ?? reviews.length} lượt đánh giá
+                      </span>
+                    </div>
+                    <div className="mt-4 space-y-2 text-sm text-gray-600">
+                      {[5, 4, 3, 2, 1].map(level => {
+                        const total = reviewStats?.totalReviews ?? reviews.length;
+                        const count = reviewStats?.ratingDistribution?.[level as 1 | 2 | 3 | 4 | 5] ?? 0;
+                        const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+                        return (
+                          <div key={level} className="flex items-center gap-2">
+                            <span className="w-6 text-right">{level}</span>
+                            <Star className="h-3 w-3 text-yellow-500" />
+                            <div className="h-2 flex-1 rounded-full bg-gray-200">
+                              <div className="h-2 rounded-full bg-yellow-400" style={{ width: `${percent}%` }} />
+                            </div>
+                            <span className="w-10 text-right text-xs">{percent}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="rounded border p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-800">Đánh giá của bạn</h3>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {userReview
+                            ? 'Bạn đã đánh giá khóa học này.'
+                            : 'Hãy cho chúng tôi biết cảm nhận của bạn.'}
+                        </p>
+                      </div>
+                      {userReview && !isEditingReview && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                              aria-label="Tùy chọn đánh giá"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setIsEditingReview(true)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Sửa
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600" onClick={handleDeleteReview}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Xóa
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                    <div className={`mt-3 space-y-3 ${userReview && !isEditingReview ? 'pointer-events-none opacity-60 blur-[1px]' : ''}`}>
+                      <div className="flex items-center gap-2">
+                        <StarRating value={reviewRating} onChange={setReviewRating} readOnly={userReview && !isEditingReview} />
+                        <span className="text-sm text-gray-600">{reviewRating}/5</span>
+                      </div>
+                      <textarea
+                        value={reviewComment}
+                        onChange={e => setReviewComment(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                        placeholder="Nhận xét của bạn..."
+                        disabled={userReview && !isEditingReview}
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button onClick={handleSubmitReview} disabled={reviewSaving || (userReview && !isEditingReview)}>
+                        {reviewSaving ? 'Đang lưu...' : userReview ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
+                      </Button>
+                      {userReview && isEditingReview && (
+                        <Button variant="outline" onClick={() => setIsEditingReview(false)}>
+                          Hủy chỉnh sửa
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {reviews.length === 0 ? (
+                  <p className="rounded border border-dashed p-4 text-sm text-gray-500">Chưa có đánh giá nào.</p>
+                ) : (
+                  reviews.map(review => (
+                    <div key={review.id} className="rounded border p-4">
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <span className="font-semibold text-gray-800">{review.user.fullName || 'An danh'}</span>
+                        <span>{new Date(review.createdAt).toLocaleDateString('vi-VN')}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <StarRating value={review.rating} readOnly />
+                        <span className="text-xs text-gray-500">{review.rating}/5</span>
+                      </div>
+                      {review.comment && (
+                        <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{review.comment}</p>
                       )}
                     </div>
                   ))

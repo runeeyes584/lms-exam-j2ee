@@ -153,6 +153,9 @@ export const commentService = {
 // Review Service
 export interface ReviewRequest {
   courseId: string;
+  userId: string;
+  userName?: string;
+  userAvatar?: string;
   rating: number;
   comment: string;
 }

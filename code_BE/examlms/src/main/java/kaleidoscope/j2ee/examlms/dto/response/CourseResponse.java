@@ -17,6 +17,8 @@ public class CourseResponse {
     private Double price;
     private String coverImage;
     private String instructorId;
+    private Double avgRating;
+    private Integer ratingCount;
     private boolean isDeleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

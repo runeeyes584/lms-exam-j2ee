@@ -42,6 +42,9 @@ public class Course {
     @Builder.Default
     private boolean isDeleted = false;
 
+    private Double avgRating;
+    private Integer ratingCount;
+
     @CreatedDate
     private LocalDateTime createdAt;
 

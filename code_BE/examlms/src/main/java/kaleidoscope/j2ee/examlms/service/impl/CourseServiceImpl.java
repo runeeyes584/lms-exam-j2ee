@@ -51,6 +51,8 @@ public class CourseServiceImpl implements CourseService {
                 .coverImage(request.getCoverImage())
                 .instructorId(request.getInstructorId())
                 .isDeleted(false)
+            .avgRating(0.0)
+            .ratingCount(0)
                 .build();
         Course saved = courseRepository.save(course);
         return toResponse(saved);
@@ -88,6 +90,8 @@ public class CourseServiceImpl implements CourseService {
                 .price(course.getPrice())
                 .coverImage(course.getCoverImage())
                 .instructorId(course.getInstructorId())
+                .avgRating(course.getAvgRating())
+                .ratingCount(course.getRatingCount())
                 .isDeleted(course.isDeleted())
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())

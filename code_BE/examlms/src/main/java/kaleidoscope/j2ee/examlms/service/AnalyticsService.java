@@ -110,7 +110,8 @@ public class AnalyticsService {
                 Instant endOfYear = LocalDate.of(year + 1, 1, 1).atStartOfDay(ZoneId.systemDefault()).toInstant();
 
                 Aggregation agg = newAggregation(
-                                match(Criteria.where("createdAt").gte(startOfYear).lt(endOfYear)),
+                                match(Criteria.where("createdAt").gte(startOfYear).lt(endOfYear)
+                                                .and("role").is("STUDENT")),
                                 project()
                                                 .andExpression("month(createdAt)").as("month")
                                                 .andExpression("year(createdAt)").as("year"),
@@ -126,17 +127,48 @@ public class AnalyticsService {
          */
         public Document getDashboardSummary() {
                 long totalUsers = mongoTemplate.getCollection("users").countDocuments();
-                long totalCourses = mongoTemplate.getCollection("courses").countDocuments();
+                long totalStudents = mongoTemplate.getCollection("users")
+                                .countDocuments(new Document("role", "STUDENT"));
+                long totalInstructors = mongoTemplate.getCollection("users")
+                                .countDocuments(new Document("role", "INSTRUCTOR"));
+                long totalCourses = mongoTemplate.getCollection("courses")
+                                .countDocuments(new Document("isDeleted", false));
+                long totalExams = mongoTemplate.getCollection("exams").countDocuments();
+                long totalAttempts = mongoTemplate.getCollection("exam_attempts").countDocuments();
                 long totalOrders = mongoTemplate.getCollection("orders")
                                 .countDocuments(new Document("status", "completed"));
                 long totalReviews = mongoTemplate.getCollection("reviews")
                                 .countDocuments(new Document("isDeleted", false));
 
+                LocalDate now = LocalDate.now();
+                Instant startOfMonth = now.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+                Instant startOfNextMonth = now.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault())
+                                .toInstant();
+                long newStudentsThisMonth = mongoTemplate.getCollection("users")
+                                .countDocuments(new Document("role", "STUDENT")
+                                                .append("createdAt", new Document("$gte", startOfMonth)
+                                                                .append("$lt", startOfNextMonth)));
+
+                Aggregation revenueAgg = newAggregation(
+                                match(Criteria.where("status").is("completed")),
+                                group().sum("totalAmount").as("totalRevenue"));
+                AggregationResults<Document> revenueRes = mongoTemplate.aggregate(revenueAgg, "orders", Document.class);
+                Document revenueDoc = revenueRes.getUniqueMappedResult();
+                double totalRevenue = revenueDoc != null && revenueDoc.get("totalRevenue") != null
+                                ? Double.parseDouble(revenueDoc.get("totalRevenue").toString())
+                                : 0;
+
                 return new Document()
                                 .append("totalUsers", totalUsers)
+                                .append("totalStudents", totalStudents)
+                                .append("totalInstructors", totalInstructors)
                                 .append("totalCourses", totalCourses)
+                                .append("totalExams", totalExams)
+                                .append("totalAttempts", totalAttempts)
                                 .append("totalOrders", totalOrders)
-                                .append("totalReviews", totalReviews);
+                                .append("totalReviews", totalReviews)
+                                .append("totalRevenue", totalRevenue)
+                                .append("newStudentsThisMonth", newStudentsThisMonth);
         }
 
         /**

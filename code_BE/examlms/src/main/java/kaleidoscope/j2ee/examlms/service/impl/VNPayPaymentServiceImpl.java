@@ -3,6 +3,7 @@ package kaleidoscope.j2ee.examlms.service.impl;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,11 +21,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.bson.Document;
+import org.bson.types.ObjectId;
 
 import kaleidoscope.j2ee.examlms.entity.Payment;
 import kaleidoscope.j2ee.examlms.entity.UserCourse;
+import kaleidoscope.j2ee.examlms.repository.CourseRepository;
 import kaleidoscope.j2ee.examlms.repository.PaymentRepository;
 import kaleidoscope.j2ee.examlms.repository.UserCourseRepository;
 import kaleidoscope.j2ee.examlms.service.VNPayPaymentService;
@@ -39,6 +44,8 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
 
     private final PaymentRepository paymentRepository;
     private final UserCourseRepository userCourseRepository;
+    private final CourseRepository courseRepository;
+    private final MongoTemplate mongoTemplate;
     private final Environment environment;
 
     @Value("${vnpay.tmnCode}")
@@ -169,6 +176,8 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
                     userCourseRepository.save(userCourse);
                 }
 
+                recordOrderIfMissing(payment);
+
                 return "Payment successful";
             } else {
                 payment.setStatus("FAILED");
@@ -219,5 +228,36 @@ public class VNPayPaymentServiceImpl implements VNPayPaymentService {
         }
 
         return configuredReturnUrl;
+    }
+
+    private void recordOrderIfMissing(Payment payment) {
+        if (payment == null || payment.getTransactionId() == null) {
+            return;
+        }
+
+        long existing = mongoTemplate.getCollection("orders")
+                .countDocuments(new Document("transactionId", payment.getTransactionId()));
+        if (existing > 0) {
+            return;
+        }
+
+        double totalAmount = payment.getAmount();
+        List<Document> items = new ArrayList<>();
+        items.add(new Document("courseId", payment.getCourseId())
+                .append("price", totalAmount));
+
+        Document order = new Document("_id", new ObjectId())
+                .append("userId", payment.getUserId())
+                .append("courseId", payment.getCourseId())
+                .append("items", items)
+                .append("totalAmount", totalAmount)
+                .append("status", "completed")
+                .append("transactionId", payment.getTransactionId())
+                .append("createdAt", Instant.now());
+
+        courseRepository.findByIdAndIsDeletedFalse(payment.getCourseId())
+                .ifPresent(course -> order.append("courseTitle", course.getTitle()));
+
+        mongoTemplate.getCollection("orders").insertOne(order);
     }
 }

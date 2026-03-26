@@ -19,6 +19,10 @@ export default function StudentCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'in-progress' | 'completed'>('all');
+  const normalizeProgress = (value: number) => {
+    const safe = Number.isFinite(value) ? value : 0;
+    return Math.max(0, Math.min(100, Math.round(safe)));
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -75,7 +79,7 @@ export default function StudentCoursesPage() {
   if (authLoading || loading) return <PageLoading message="Đang tải khóa học..." />;
 
   const filteredCourses = courses.filter(course => {
-    const progress = Number(course.progress ?? course.progressPercent ?? 0);
+    const progress = normalizeProgress(Number(course.progress ?? course.progressPercent ?? 0));
     const matchesSearch = (course.courseName || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
       filter === 'all' ||
@@ -117,7 +121,7 @@ export default function StudentCoursesPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredCourses.map(course => {
-            const progress = Number(course.progress ?? course.progressPercent ?? 0);
+            const progress = normalizeProgress(Number(course.progress ?? course.progressPercent ?? 0));
             return (
               <Card key={`${course.courseId}-${course.enrolledAt}`} className="group overflow-hidden transition-shadow hover:shadow-lg">
                 <div className="relative aspect-video bg-gray-100">

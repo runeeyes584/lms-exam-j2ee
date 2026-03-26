@@ -54,14 +54,14 @@ public class AnalyticsController {
 
     @GetMapping("/top-courses")
     public ResponseEntity<ApiResponse<List<Document>>> topCoursesByEnrollment(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "5") int limit) {
         List<Document> data = analyticsService.getTopCoursesByEnrollment(limit);
         return ResponseEntity.ok(new ApiResponse<>(true, "OK", data));
     }
 
     @GetMapping("/courses/top-revenue")
     public ResponseEntity<ApiResponse<List<Document>>> topCoursesByRevenue(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "5") int limit) {
         List<Document> data = analyticsService.getTopCoursesByRevenue(limit);
         return ResponseEntity.ok(new ApiResponse<>(true, "OK", data));
     }
