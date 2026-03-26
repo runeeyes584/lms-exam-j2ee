@@ -32,4 +32,6 @@ public class ExamCreateRequest {
     private List<ExamQuestion> questions = new ArrayList<>();
     
     private GenerationType generationType = GenerationType.MANUAL;
+
+    private Boolean allowResultReview = true;
 }

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
-import { User, Lock, Bell, Camera, Upload } from 'lucide-react';
+import { User, Lock, Bell, Camera, Upload, GraduationCap, ArrowRight, CheckCircle2, Clock3, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { userService } from '@/services';
 import { isSuccess } from '@/types/types';
@@ -14,7 +15,7 @@ import type { UpdateProfileRequest, ChangePasswordRequest } from '@/types/types'
 
 export default function SettingsPage() {
   const { user, isLoading, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'notifications'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'notifications' | 'teaching'>('profile');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -157,9 +158,10 @@ export default function SettingsPage() {
   };
 
   const tabs = [
-    { id: 'profile', label: 'Hồ sơ cá nhân', icon: User },
-    { id: 'password', label: 'Đổi mật khẩu', icon: Lock },
-    { id: 'notifications', label: 'Thông báo', icon: Bell },
+    { id: 'profile', label: 'Hồ sơ cá nhân', icon: User, visible: true },
+    { id: 'password', label: 'Đổi mật khẩu', icon: Lock, visible: true },
+    { id: 'notifications', label: 'Thông báo', icon: Bell, visible: true },
+    { id: 'teaching', label: 'Cộng đồng giảng dạy', icon: GraduationCap, visible: user.role === 'STUDENT' },
   ] as const;
 
   return (
@@ -174,7 +176,7 @@ export default function SettingsPage() {
           <Card>
             <CardContent className="p-4">
               <nav className="space-y-1">
-                {tabs.map(tab => {
+                {tabs.filter(tab => tab.visible).map(tab => {
                   const Icon = tab.icon;
                   return (
                     <button
@@ -332,6 +334,60 @@ export default function SettingsPage() {
                       </label>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'teaching' && user.role === 'STUDENT' && (
+            <Card className="overflow-hidden border-0 shadow-sm">
+              <CardContent className="space-y-6 p-0">
+                <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-6 py-6 text-white">
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Cơ hội trở thành giảng viên
+                  </div>
+                  <h3 className="text-2xl font-bold">Tham gia cộng đồng giảng dạy của chúng tôi</h3>
+                  <p className="mt-2 text-sm text-blue-50">
+                    Chia sẻ kiến thức, xây dựng khóa học của bạn và nhận hỗ trợ xét duyệt nhanh từ đội ngũ quản trị.
+                  </p>
+                </div>
+
+                <div className="px-6 pb-6">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-blue-600">Quy trình xét duyệt</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">2-5 ngày làm việc</p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">Điều kiện</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">Tài khoản học viên hợp lệ</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="flex items-start gap-3 text-sm text-gray-700">
+                      <Clock3 className="mt-0.5 h-4 w-4 text-blue-600" />
+                      <span>Gửi yêu cầu với thông tin kinh nghiệm hoặc định hướng giảng dạy.</span>
+                    </div>
+                    <div className="flex items-start gap-3 text-sm text-gray-700">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-blue-600" />
+                      <span>Admin xem xét và phản hồi trực tiếp trong hệ thống.</span>
+                    </div>
+                    <div className="flex items-start gap-3 text-sm text-gray-700">
+                      <GraduationCap className="mt-0.5 h-4 w-4 text-blue-600" />
+                      <span>Sau khi duyệt, vai trò sẽ được nâng cấp thành giảng viên.</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <Link href="/student/instructor-request">
+                      <Button className="h-11 w-full sm:w-auto">
+                        Đăng ký giảng viên
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </CardContent>
             </Card>

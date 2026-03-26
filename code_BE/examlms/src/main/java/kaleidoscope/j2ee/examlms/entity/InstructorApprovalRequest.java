@@ -29,6 +29,10 @@ public class InstructorApprovalRequest {
 
     private String note;
 
+    private String cvFileUrl;
+
+    private String cvOriginalFileName;
+
     private Instant createdAt;
 
     private Instant reviewedAt;

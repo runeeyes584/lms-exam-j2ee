@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { PageLoading } from '@/components/ui/loading';
 import {
   CheckCircle, XCircle, Clock, ArrowLeft,
-  Trophy, RotateCcw, BookOpen, ChevronDown, ChevronUp
+  Trophy, RotateCcw, BookOpen, ChevronDown, ChevronUp, Lock
 } from 'lucide-react';
 import Link from 'next/link';
 import { attemptService, ExamAttemptResponse, QuestionResult } from '@/services/attemptService';
@@ -20,6 +20,7 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
   const { isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState<ExamAttemptResponse | null>(null);
+  const [reviewDisabled, setReviewDisabled] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
 
   const attemptId = searchParams.get('attemptId');
@@ -38,11 +39,29 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
       const response = await attemptService.review(attemptId);
       if (isSuccess(response.code) && response.result) {
         setAttempt(response.result);
+        setReviewDisabled(false);
       } else {
-        setAttempt(getMockAttempt());
+        const fallback = await attemptService.getById(attemptId);
+        if (isSuccess(fallback.code) && fallback.result) {
+          setAttempt({ ...fallback.result, questionResults: [] });
+          setReviewDisabled(true);
+        } else {
+          setAttempt(null);
+        }
       }
-    } catch (error) {
-      setAttempt(getMockAttempt());
+    } catch (error: any) {
+      const message = String(error?.response?.data?.message || '').toLowerCase();
+      try {
+        const fallback = await attemptService.getById(attemptId);
+        if (isSuccess(fallback.code) && fallback.result) {
+          setAttempt({ ...fallback.result, questionResults: [] });
+          setReviewDisabled(message.includes('disabled') || message.includes('review'));
+        } else {
+          setAttempt(null);
+        }
+      } catch {
+        setAttempt(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -87,11 +106,26 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
   const derivedPercentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
   const displayPercentage = percentageFromApi > 0 ? percentageFromApi : derivedPercentage;
 
-  const correct = reviewItems.filter(q => q.isCorrect).length;
-  const total = reviewItems.length;
-  const duration = attempt.endTime && attempt.startTime
-    ? Math.round((new Date(attempt.endTime).getTime() - new Date(attempt.startTime).getTime()) / 60000)
-    : null;
+  const isCorrectQuestion = (q: QuestionResult & { correct?: boolean }) => {
+    if (typeof q.isCorrect === 'boolean') return q.isCorrect;
+    if (typeof q.correct === 'boolean') return q.correct;
+    return safeNumber(q.maxScore) > 0 && safeNumber(q.earnedScore) >= safeNumber(q.maxScore);
+  };
+
+  const correctFromApi = safeNumber((attempt as any)?.correctAnswers);
+  const totalFromApi = safeNumber((attempt as any)?.totalQuestions);
+  const correct = correctFromApi > 0 || totalFromApi > 0 ? correctFromApi : reviewItems.filter(q => isCorrectQuestion(q as any)).length;
+  const total = totalFromApi > 0 ? totalFromApi : reviewItems.length;
+
+  const scoreOnTenFromApi = safeNumber((attempt as any)?.scoreOnTen);
+  const scoreOnTen = scoreOnTenFromApi > 0 ? scoreOnTenFromApi : totalMax > 0 ? Math.round((totalScore / totalMax) * 100) / 10 : 0;
+
+  const completionSecondsFromApi = safeNumber((attempt as any)?.completionSeconds);
+  const durationMinutes = completionSecondsFromApi > 0
+    ? Math.max(1, Math.round(completionSecondsFromApi / 60))
+    : attempt.submittedAt && attempt.startTime
+      ? Math.max(1, Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startTime).getTime()) / 60000))
+      : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -111,9 +145,9 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
 
           <div className="mb-6 inline-block">
             <span className={`text-6xl font-bold ${attempt.passed ? 'text-green-600' : 'text-red-500'}`}>
-              {displayPercentage}%
+              {scoreOnTen.toFixed(2)}/10
             </span>
-            <p className="mt-1 text-gray-500">{totalScore} / {totalMax} điểm</p>
+            <p className="mt-1 text-gray-500">{totalScore} / {totalMax} điểm ({displayPercentage}%)</p>
           </div>
 
           <div className="grid grid-cols-3 gap-4 rounded-xl bg-white/60 p-4">
@@ -122,12 +156,12 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
               <p className="text-xs text-gray-500">Câu đúng</p>
             </div>
             <div className="text-center border-x">
-              <p className="text-2xl font-bold text-gray-800">{displayPercentage}%</p>
-              <p className="text-xs text-gray-500">Điểm số</p>
+              <p className="text-2xl font-bold text-gray-800">{scoreOnTen.toFixed(2)}/10</p>
+              <p className="text-xs text-gray-500">Điểm thang 10</p>
             </div>
             <div className="text-center">
-              {duration !== null
-                ? <><p className="text-2xl font-bold text-gray-800">{duration}'</p><p className="text-xs text-gray-500">Thời gian</p></>
+              {durationMinutes !== null
+                ? <><p className="text-2xl font-bold text-gray-800">{durationMinutes}'</p><p className="text-xs text-gray-500">Hoàn thành</p></>
                 : <><p className="text-2xl font-bold text-gray-800">--</p><p className="text-xs text-gray-500">Thời gian</p></>
               }
             </div>
@@ -156,8 +190,20 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
         </Link>
       </div>
 
+      {reviewDisabled && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="flex items-start gap-3 p-4">
+            <Lock className="mt-0.5 h-5 w-5 text-amber-700" />
+            <div>
+              <p className="text-sm font-medium text-amber-900">Giảng viên đã tắt xem review chi tiết</p>
+              <p className="text-sm text-amber-800">Bạn vẫn xem được điểm tổng quan, nhưng không hiển thị đáp án/giải thích từng câu.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Question Review */}
-      {reviewItems.length > 0 && (
+      {reviewItems.length > 0 && !reviewDisabled && (
         <Card>
           <CardHeader className="border-b">
             <CardTitle className="text-base">Review đáp án chi tiết</CardTitle>
@@ -171,8 +217,8 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
                     className="flex w-full items-start gap-3 text-left"
                     onClick={() => setExpandedQuestion(isExpanded ? null : q.questionId)}
                   >
-                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${q.isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
-                      {q.isCorrect
+                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isCorrectQuestion(q as any) ? 'bg-green-100' : 'bg-red-100'}`}>
+                      {isCorrectQuestion(q as any)
                         ? <CheckCircle className="h-4 w-4 text-green-600" />
                         : <XCircle className="h-4 w-4 text-red-500" />
                       }
@@ -183,7 +229,7 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
                           Câu {idx + 1}: {q.questionContent}
                         </p>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`text-sm font-bold ${q.isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+                          <span className={`text-sm font-bold ${isCorrectQuestion(q as any) ? 'text-green-600' : 'text-red-500'}`}>
                             {q.earnedScore}/{q.maxScore}
                           </span>
                           {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
@@ -197,11 +243,11 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
                       <div className="rounded-lg bg-gray-50 p-3 space-y-2">
                         <div>
                           <span className="text-xs font-medium text-gray-500">Bạn chọn: </span>
-                          <span className={`font-medium ${q.isCorrect ? 'text-green-700' : 'text-red-600'}`}>
+                          <span className={`font-medium ${isCorrectQuestion(q as any) ? 'text-green-700' : 'text-red-600'}`}>
                             {(q.selectedOptionIds || []).join(', ') || '(Không trả lời)'}
                           </span>
                         </div>
-                        {!q.isCorrect && (q.correctOptionIds || []).length > 0 && (
+                        {!isCorrectQuestion(q as any) && (q.correctOptionIds || []).length > 0 && (
                           <div>
                             <span className="text-xs font-medium text-gray-500">Đáp án đúng: </span>
                             <span className="font-medium text-green-700">{(q.correctOptionIds || []).join(', ')}</span>

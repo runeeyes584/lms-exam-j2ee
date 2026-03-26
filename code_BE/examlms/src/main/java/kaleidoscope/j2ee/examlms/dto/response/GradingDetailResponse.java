@@ -1,12 +1,13 @@
 package kaleidoscope.j2ee.examlms.dto.response;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -16,17 +17,21 @@ public class GradingDetailResponse {
     
     private String attemptId;
     private String examId;
+    private String examTitle;
     private String studentId;
-    private Double autoGradedScore;
-    private Double manualGradedScore;
+    private String studentName;
+    private String studentEmail;
     private Double totalScore;
-    private Integer totalQuestions;
-    private Integer gradedQuestions;
-    private Integer pendingQuestions;
-    
-    // Map: questionId -> QuestionGradeDetail
+    private Double maxScore;
+    private Double percentage;
+    private String status;
+    private Boolean passed;
+    private LocalDateTime submittedAt;
+    private LocalDateTime gradedAt;
+    private String gradedBy;
+
     @Builder.Default
-    private Map<String, QuestionGradeDetail> questionGrades = new HashMap<>();
+    private List<QuestionGradeDetail> questionGrades = new ArrayList<>();
     
     @Data
     @NoArgsConstructor
@@ -35,13 +40,12 @@ public class GradingDetailResponse {
     public static class QuestionGradeDetail {
         private String questionId;
         private String questionContent;
-        private String studentAnswer; // Formatted answer for display
-        private String correctAnswer;
+        private String questionType;
         private Double maxPoints;
         private Double earnedPoints;
-        private Boolean isAutoGraded;
-        private Boolean needsManualReview;
+        private List<String> selectedOptions;
+        private List<String> correctOptions;
+        private Boolean isCorrect;
         private String feedback;
-        private Boolean accepted;
     }
 }

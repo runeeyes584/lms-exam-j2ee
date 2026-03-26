@@ -44,6 +44,7 @@ public class ExamServiceImpl implements ExamService {
         exam.setGenerationType(request.getGenerationType() != null ? 
             request.getGenerationType() : GenerationType.MANUAL);
         exam.setIsPublished(false);
+        exam.setAllowResultReview(request.getAllowResultReview() == null ? Boolean.TRUE : request.getAllowResultReview());
         exam.setCreatedBy(createdBy);
         exam.setCreatedAt(LocalDateTime.now());
         exam.setUpdatedAt(LocalDateTime.now());
@@ -77,6 +78,7 @@ public class ExamServiceImpl implements ExamService {
         exam.setDuration(request.getDuration());
         exam.setPassingScore(request.getPassingScore());
         exam.setQuestions(request.getQuestions());
+        exam.setAllowResultReview(request.getAllowResultReview() == null ? Boolean.TRUE : request.getAllowResultReview());
         exam.setUpdatedAt(LocalDateTime.now());
         
         // Recalculate total points
@@ -171,6 +173,22 @@ public class ExamServiceImpl implements ExamService {
     }
 
     @Override
+    public ExamResponse updateReviewVisibility(String id, Boolean allowResultReview, String userId) {
+        Exam exam = examRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Exam not found with id: " + id));
+
+        if (userId != null && exam.getCreatedBy() != null && !exam.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("You do not have permission to update review visibility for this exam");
+        }
+
+        exam.setAllowResultReview(Boolean.TRUE.equals(allowResultReview));
+        exam.setUpdatedAt(LocalDateTime.now());
+
+        Exam updatedExam = examRepository.save(exam);
+        return mapToResponse(updatedExam);
+    }
+
+    @Override
     public Page<ExamResponse> getExamsByCreator(String createdBy, Pageable pageable) {
         Page<Exam> exams = examRepository.findByCreatedBy(createdBy, pageable);
         return exams.map(this::mapToResponse);
@@ -212,6 +230,7 @@ public class ExamServiceImpl implements ExamService {
         response.setQuestions(exam.getQuestions());
         response.setGenerationType(exam.getGenerationType());
         response.setIsPublished(exam.getIsPublished());
+        response.setAllowResultReview(exam.getAllowResultReview() == null ? Boolean.TRUE : exam.getAllowResultReview());
         response.setCreatedBy(exam.getCreatedBy());
         response.setCreatedAt(exam.getCreatedAt());
         response.setUpdatedAt(exam.getUpdatedAt());

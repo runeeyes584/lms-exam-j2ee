@@ -23,6 +23,7 @@ public class ExamResponse {
     private List<ExamQuestion> questions;
     private GenerationType generationType;
     private Boolean isPublished;
+    private Boolean allowResultReview;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

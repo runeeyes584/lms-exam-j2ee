@@ -54,6 +54,7 @@ public class ExamGeneratorServiceImpl implements ExamGeneratorService {
         exam.setQuestions(examQuestions);
         exam.setGenerationType(GenerationType.AUTO);
         exam.setIsPublished(false);
+        exam.setAllowResultReview(request.getAllowResultReview() == null ? Boolean.TRUE : request.getAllowResultReview());
         exam.setCreatedBy(createdBy);
         exam.setCreatedAt(LocalDateTime.now());
         exam.setUpdatedAt(LocalDateTime.now());
@@ -177,6 +178,7 @@ public class ExamGeneratorServiceImpl implements ExamGeneratorService {
         response.setQuestions(exam.getQuestions());
         response.setGenerationType(exam.getGenerationType());
         response.setIsPublished(exam.getIsPublished());
+        response.setAllowResultReview(exam.getAllowResultReview() == null ? Boolean.TRUE : exam.getAllowResultReview());
         response.setCreatedBy(exam.getCreatedBy());
         response.setCreatedAt(exam.getCreatedAt());
         response.setUpdatedAt(exam.getUpdatedAt());

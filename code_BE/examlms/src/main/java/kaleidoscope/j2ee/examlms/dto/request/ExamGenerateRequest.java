@@ -36,5 +36,7 @@ public class ExamGenerateRequest {
     @NotNull(message = "Difficulty distribution is required")
     private Map<DifficultyLevel, Integer> difficultyDistribution = new HashMap<>();
     
+    private Boolean allowResultReview = true;
+    
     // Example: { RECOGNIZE: 5, UNDERSTAND: 3, APPLY: 2, ANALYZE: 1 }
 }

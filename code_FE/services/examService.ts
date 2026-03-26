@@ -11,6 +11,7 @@ export interface ExamCreateRequest {
   mode: ExamMode;
   questionIds?: string[]; // for MANUAL mode
   isPublished?: boolean;
+  allowResultReview?: boolean;
 }
 
 export interface ExamGenerateRequest {
@@ -19,6 +20,7 @@ export interface ExamGenerateRequest {
   courseId?: string;
   duration: number;
   passingScore: number;
+  allowResultReview?: boolean;
   difficultyMatrix: {
     recognize: number;
     understand: number;
@@ -44,6 +46,7 @@ const normalizeExam = (exam: any): ExamResponse => ({
   totalPoints: exam?.totalPoints ?? 0,
   questions: Array.isArray(exam?.questions) ? exam.questions : [],
   isPublished: Boolean(exam?.isPublished),
+  allowResultReview: exam?.allowResultReview !== false,
 });
 
 const normalizeExamPage = (
@@ -90,6 +93,7 @@ export const examService = {
       duration: data.duration,
       passingScore: data.passingScore,
       generationType: 'MANUAL',
+      allowResultReview: data.allowResultReview ?? true,
       questions: (data.questionIds || []).map((questionId, index) => ({
         questionId,
         order: index + 1,
@@ -116,6 +120,7 @@ export const examService = {
         APPLY: data.difficultyMatrix.apply || 0,
         ANALYZE: data.difficultyMatrix.analyze || 0,
       },
+      allowResultReview: data.allowResultReview ?? true,
     });
     return {
       ...response.data,
@@ -132,6 +137,7 @@ export const examService = {
       duration: data.duration,
       passingScore: data.passingScore,
       generationType: data.mode === 'MATRIX' ? 'AUTO' : 'MANUAL',
+      allowResultReview: data.allowResultReview ?? true,
       questions: (data.questionIds || []).map((questionId, index) => ({
         questionId,
         order: index + 1,
@@ -179,6 +185,15 @@ export const examService = {
   // Unpublish exam
   unpublish: async (id: string): Promise<ApiResponse<ExamResponse>> => {
     const response = await api.post(`/exams/${id}/unpublish`);
+    return {
+      ...response.data,
+      result: response.data.result ? normalizeExam(response.data.result) : response.data.result,
+    };
+  },
+
+  // Toggle review visibility for students
+  updateReviewVisibility: async (id: string, allowResultReview: boolean): Promise<ApiResponse<ExamResponse>> => {
+    const response = await api.patch(`/exams/${id}/review-visibility`, { allowResultReview });
     return {
       ...response.data,
       result: response.data.result ? normalizeExam(response.data.result) : response.data.result,

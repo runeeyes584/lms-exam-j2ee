@@ -13,7 +13,9 @@ export interface QuestionCreateRequest {
   difficulty: DifficultyLevel;
   points: number;
   content: string;
+  imageUrl?: string;
   options: QuestionOptionRequest[];
+  correctAnswer?: string;
   explanation?: string;
 }
 

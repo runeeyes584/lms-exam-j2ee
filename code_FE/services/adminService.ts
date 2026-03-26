@@ -9,10 +9,8 @@ export interface AdminUserResponse extends User {
 }
 
 export interface InstructorApprovalRequest {
-  qualifications: string;
-  experience: string;
-  specialization: string;
-  documents?: string[];
+  note?: string;
+  cvFile?: File;
 }
 
 export interface InstructorApprovalResponse {
@@ -20,6 +18,8 @@ export interface InstructorApprovalResponse {
   userId: string;
   user?: User & { isActive?: boolean };
   note?: string;
+  cvFileUrl?: string;
+  cvOriginalFileName?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   reviewedAt?: string;
@@ -100,7 +100,15 @@ export const adminService = {
   },
 
   submitInstructorRequest: async (data: InstructorApprovalRequest): Promise<ApiResponse<InstructorApprovalResponse>> => {
-    const response = await api.post('/instructor-requests', data);
+    const formData = new FormData();
+    if (data.note) {
+      formData.append('note', data.note);
+    }
+    if (data.cvFile) {
+      formData.append('file', data.cvFile);
+    }
+
+    const response = await api.post('/instructor-requests', formData);
     return response.data;
   },
 

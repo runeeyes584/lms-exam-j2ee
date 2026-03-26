@@ -12,6 +12,8 @@ public record InstructorApprovalRequestResponse(
                 InstructorRequestUserResponse user,
                 InstructorRequestStatus status,
                 String note,
+                String cvFileUrl,
+                String cvOriginalFileName,
                 Instant createdAt,
                 Instant reviewedAt,
                 String reviewedBy) {

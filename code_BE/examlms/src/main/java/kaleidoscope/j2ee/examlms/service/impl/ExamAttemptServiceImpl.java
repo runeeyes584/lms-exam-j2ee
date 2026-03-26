@@ -1,5 +1,6 @@
 package kaleidoscope.j2ee.examlms.service.impl;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,6 +22,7 @@ import kaleidoscope.j2ee.examlms.entity.StudentAnswer;
 import kaleidoscope.j2ee.examlms.repository.ExamAttemptRepository;
 import kaleidoscope.j2ee.examlms.repository.ExamRepository;
 import kaleidoscope.j2ee.examlms.repository.QuestionRepository;
+import kaleidoscope.j2ee.examlms.repository.UserRepository;
 import kaleidoscope.j2ee.examlms.repository.UserCourseRepository;
 import kaleidoscope.j2ee.examlms.service.ExamAttemptService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
     private final UserCourseRepository userCourseRepository;
+    private final UserRepository userRepository;
 
     @Override
     public ExamAttemptResponse startExam(String examId, String studentId) {
@@ -146,12 +149,8 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
 
     @Override
     public Page<ExamAttemptResponse> getMyAttempts(String studentId, Pageable pageable) {
-        Page<ExamAttempt> attempts = attemptRepository.findAll(pageable);
-        // Filter by studentId in application (MongoDB query method exists but using
-        // Page)
-        return (Page<ExamAttemptResponse>) attempts
-                .filter(a -> a.getStudentId().equals(studentId))
-                .map(this::mapToResponse);
+        Page<ExamAttempt> attempts = attemptRepository.findByStudentId(studentId, pageable);
+        return attempts.map(this::mapToResponse);
     }
 
     @Override
@@ -180,6 +179,13 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
         // Only allow review if exam is submitted or graded
         if (attempt.getStatus() == AttemptStatus.IN_PROGRESS) {
             throw new RuntimeException("Cannot review. Exam is still in progress.");
+        }
+
+        Exam exam = examRepository.findById(attempt.getExamId())
+                .orElseThrow(() -> new RuntimeException("Exam not found with id: " + attempt.getExamId()));
+
+        if (Boolean.FALSE.equals(exam.getAllowResultReview())) {
+            throw new RuntimeException("Instructor has disabled detailed review for this exam");
         }
 
         return mapToResponse(attempt, true);
@@ -280,6 +286,7 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
         response.setId(attempt.getId());
         response.setExamId(attempt.getExamId());
         response.setStudentId(attempt.getStudentId());
+        response.setStudentName(userRepository.findById(attempt.getStudentId()).map(u -> u.getFullName()).orElse(null));
         response.setStartTime(attempt.getStartTime());
         response.setEndTime(attempt.getEndTime());
         response.setSubmittedAt(attempt.getSubmittedAt());
@@ -309,6 +316,16 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
                 ? Math.round((effectiveTotalScore / totalMaxScore) * 10000.0) / 100.0
                 : 0.0;
         response.setPercentage(percentage);
+        response.setScoreOnTen(totalMaxScore > 0
+                ? Math.round((effectiveTotalScore / totalMaxScore) * 1000.0) / 100.0
+                : 0.0);
+
+        if (attempt.getSubmittedAt() != null && attempt.getStartTime() != null) {
+            long seconds = Duration.between(attempt.getStartTime(), attempt.getSubmittedAt()).getSeconds();
+            response.setCompletionSeconds(Math.max(seconds, 0));
+        } else {
+            response.setCompletionSeconds(null);
+        }
 
         double passingScore = exam != null && exam.getPassingScore() != null
                 ? exam.getPassingScore()
@@ -316,7 +333,13 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
         response.setPassed(percentage >= passingScore);
 
         if (includeQuestionResults) {
-            response.setQuestionResults(buildQuestionResults(attempt));
+            List<ExamAttemptResponse.QuestionResult> questionResults = buildQuestionResults(attempt);
+            response.setQuestionResults(questionResults);
+            response.setTotalQuestions(questionResults.size());
+            response.setCorrectAnswers((int) questionResults.stream().filter(ExamAttemptResponse.QuestionResult::isCorrect).count());
+        } else {
+            response.setTotalQuestions(null);
+            response.setCorrectAnswers(null);
         }
 
         return response;
@@ -337,7 +360,7 @@ public class ExamAttemptServiceImpl implements ExamAttemptService {
 
             double maxScore = question.getPoints() != null ? question.getPoints() : 0.0;
             double earnedScore = gradeQuestion(question, answer);
-            boolean isCorrect = Double.compare(earnedScore, maxScore) == 0 && maxScore > 0;
+            boolean isCorrect = maxScore > 0 && Math.abs(earnedScore - maxScore) < 1e-6;
 
             List<String> selectedTexts = extractSelectedTexts(question, answer);
             List<String> correctTexts = extractCorrectTexts(question);

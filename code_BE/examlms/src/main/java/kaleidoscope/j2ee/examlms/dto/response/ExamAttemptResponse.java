@@ -1,5 +1,6 @@
 package kaleidoscope.j2ee.examlms.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import kaleidoscope.j2ee.examlms.entity.AttemptStatus;
 import kaleidoscope.j2ee.examlms.entity.StudentAnswer;
 import lombok.AllArgsConstructor;
@@ -17,6 +18,7 @@ public class ExamAttemptResponse {
     private String id;
     private String examId;
     private String studentId;
+    private String studentName;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime submittedAt;
@@ -26,6 +28,10 @@ public class ExamAttemptResponse {
     private Double manualGradedScore;
     private Double totalMaxScore;
     private Double percentage;
+    private Double scoreOnTen;
+    private Integer correctAnswers;
+    private Integer totalQuestions;
+    private Long completionSeconds;
     private Boolean passed;
     private String examTitle;
     private AttemptStatus status;
@@ -41,6 +47,7 @@ public class ExamAttemptResponse {
         private String questionContent;
         private List<String> selectedOptionIds;
         private List<String> correctOptionIds;
+        @JsonProperty("isCorrect")
         private boolean isCorrect;
         private Double earnedScore;
         private Double maxScore;

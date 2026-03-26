@@ -48,6 +48,9 @@ public class Exam {
     @Field("is_published")
     private Boolean isPublished = false;
 
+    @Field("allow_result_review")
+    private Boolean allowResultReview = true;
+
     @Field("created_by")
     private String createdBy;
 

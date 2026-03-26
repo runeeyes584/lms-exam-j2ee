@@ -133,6 +133,16 @@ export default function InstructorExamDetailPage({ params }: { params: { id: str
             <p className="mt-1 text-2xl font-bold text-gray-900">{attempts.length} / {avgScore}%</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <FileText className="h-4 w-4" />Review kết quả
+            </div>
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {exam.allowResultReview !== false ? 'Bật' : 'Tắt'}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

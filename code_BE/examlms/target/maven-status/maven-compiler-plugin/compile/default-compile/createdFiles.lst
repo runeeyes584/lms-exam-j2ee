@@ -1,6 +1,7 @@
 kaleidoscope\j2ee\examlms\dto\response\CommentResponse.class
 kaleidoscope\j2ee\examlms\entity\LessonProgress.class
 kaleidoscope\j2ee\examlms\repository\InstructorApprovalRequestRepository.class
+kaleidoscope\j2ee\examlms\dto\response\RegistrationInitResponse$RegistrationInitResponseBuilder.class
 kaleidoscope\j2ee\examlms\dto\request\CommentRequest.class
 kaleidoscope\j2ee\examlms\entity\Certificate$CertificateBuilder.class
 kaleidoscope\j2ee\examlms\repository\UserRepository.class
@@ -13,6 +14,7 @@ kaleidoscope\j2ee\examlms\entity\Course.class
 kaleidoscope\j2ee\examlms\entity\ExamAttempt.class
 kaleidoscope\j2ee\examlms\dto\response\EnrollmentResponse$EnrollmentResponseBuilder.class
 kaleidoscope\j2ee\examlms\service\impl\ExamServiceImpl.class
+kaleidoscope\j2ee\examlms\dto\request\VerifyRegistrationOtpRequest.class
 kaleidoscope\j2ee\examlms\dto\response\GradingDetailResponse$QuestionGradeDetail$QuestionGradeDetailBuilder.class
 kaleidoscope\j2ee\examlms\service\MediaResourceService.class
 kaleidoscope\j2ee\examlms\dto\response\InstructorApprovalRequestResponse$InstructorApprovalRequestResponseBuilder.class
@@ -26,6 +28,7 @@ kaleidoscope\j2ee\examlms\dto\response\CourseResponse.class
 kaleidoscope\j2ee\examlms\config\WebConfig.class
 kaleidoscope\j2ee\examlms\utils\ResponseCode.class
 kaleidoscope\j2ee\examlms\entity\enums\Gender.class
+kaleidoscope\j2ee\examlms\service\impl\RegistrationOtpServiceImpl.class
 kaleidoscope\j2ee\examlms\dto\request\LoginRequest.class
 kaleidoscope\j2ee\examlms\entity\MediaResource$MediaType.class
 kaleidoscope\j2ee\examlms\entity\Question.class
@@ -38,6 +41,7 @@ kaleidoscope\j2ee\examlms\dto\request\ReviewUpdateRequest.class
 kaleidoscope\j2ee\examlms\dto\response\UserProfileResponse.class
 kaleidoscope\j2ee\examlms\entity\Comment.class
 kaleidoscope\j2ee\examlms\config\OpenApiConfig.class
+kaleidoscope\j2ee\examlms\dto\response\RegistrationInitResponse.class
 kaleidoscope\j2ee\examlms\entity\UserCourse.class
 kaleidoscope\j2ee\examlms\dto\response\AuthResponse$AuthResponseBuilder.class
 kaleidoscope\j2ee\examlms\repository\ReviewRepository.class
@@ -66,6 +70,7 @@ kaleidoscope\j2ee\examlms\controller\AuthController.class
 kaleidoscope\j2ee\examlms\entity\enums\Role.class
 kaleidoscope\j2ee\examlms\controller\ReviewController.class
 kaleidoscope\j2ee\examlms\dto\response\ProgressResponse.class
+kaleidoscope\j2ee\examlms\service\RegistrationOtpService.class
 kaleidoscope\j2ee\examlms\entity\User$UserBuilder.class
 kaleidoscope\j2ee\examlms\dto\response\CourseResponse$CourseResponseBuilder.class
 kaleidoscope\j2ee\examlms\exception\AppException.class
@@ -89,13 +94,16 @@ kaleidoscope\j2ee\examlms\service\CommentService.class
 kaleidoscope\j2ee\examlms\dto\request\ManualGradeRequest.class
 kaleidoscope\j2ee\examlms\entity\MediaResource$MediaResourceBuilder.class
 kaleidoscope\j2ee\examlms\entity\Certificate.class
+kaleidoscope\j2ee\examlms\repository\PendingRegistrationRepository.class
 kaleidoscope\j2ee\examlms\dto\request\CourseRequest.class
 kaleidoscope\j2ee\examlms\dto\response\ChapterResponse$ChapterResponseBuilder.class
 kaleidoscope\j2ee\examlms\service\impl\UserServiceImpl.class
 kaleidoscope\j2ee\examlms\entity\GenerationType.class
+kaleidoscope\j2ee\examlms\entity\PendingRegistration$PendingRegistrationBuilder.class
 kaleidoscope\j2ee\examlms\service\impl\EnrollmentServiceImpl.class
 kaleidoscope\j2ee\examlms\service\impl\InstructorApprovalRequestServiceImpl.class
 kaleidoscope\j2ee\examlms\service\CourseService.class
+kaleidoscope\j2ee\examlms\dto\request\ResendRegistrationOtpRequest.class
 kaleidoscope\j2ee\examlms\dto\response\ExamResponse.class
 kaleidoscope\j2ee\examlms\service\VNPayPaymentService.class
 kaleidoscope\j2ee\examlms\entity\LessonProgress$LessonProgressBuilder.class
@@ -122,6 +130,7 @@ kaleidoscope\j2ee\examlms\dto\request\ExamCreateRequest.class
 kaleidoscope\j2ee\examlms\service\impl\QuestionServiceImpl$1.class
 kaleidoscope\j2ee\examlms\dto\response\CertificateResponse$CertificateResponseBuilder.class
 kaleidoscope\j2ee\examlms\repository\CourseRepository.class
+kaleidoscope\j2ee\examlms\entity\PendingRegistration.class
 kaleidoscope\j2ee\examlms\entity\ExamQuestion.class
 kaleidoscope\j2ee\examlms\dto\request\UpdateProfileRequest.class
 kaleidoscope\j2ee\examlms\service\AuthService.class
@@ -167,6 +176,7 @@ kaleidoscope\j2ee\examlms\dto\response\EnrollmentResponse.class
 kaleidoscope\j2ee\examlms\controller\AdminUserController.class
 kaleidoscope\j2ee\examlms\service\ExamAttemptService.class
 kaleidoscope\j2ee\examlms\controller\UserController.class
+kaleidoscope\j2ee\examlms\dto\request\UpdateReviewVisibilityRequest.class
 kaleidoscope\j2ee\examlms\entity\enums\InstructorRequestStatus.class
 kaleidoscope\j2ee\examlms\dto\response\CourseMemberResponse$CourseMemberResponseBuilder.class
 kaleidoscope\j2ee\examlms\dto\request\ReviewRequest.class

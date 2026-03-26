@@ -9,7 +9,7 @@ import { PageLoading } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ClipboardList, Search, Plus, Edit, Trash2, Filter, Upload, FileSpreadsheet, X, Check } from 'lucide-react';
 import { questionService, QuestionResponse, QuestionCreateRequest } from '@/services/questionService';
-import { ResponseCode, isSuccess } from '@/types/types';
+import { isSuccess } from '@/types/types';
 import { toast } from 'react-hot-toast';
 import type { DifficultyLevel, QuestionType } from '@/types/types';
 
@@ -18,6 +18,13 @@ const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
   UNDERSTAND: 'Thông hiểu',
   APPLY: 'Vận dụng',
   ANALYZE: 'Phân tích',
+};
+
+const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+  SINGLE_CHOICE: 'Trắc nghiệm 1 đáp án',
+  MULTIPLE_CHOICE: 'Trắc nghiệm nhiều lựa chọn',
+  TRUE_FALSE: 'Đúng/Sai',
+  FILL_IN: 'Điền khuyết',
 };
 
 // Modal tạo/sửa câu hỏi
@@ -29,6 +36,24 @@ interface QuestionModalProps {
 }
 
 function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionModalProps) {
+  const buildDefaultOptions = (type: QuestionType) => {
+    if (type === 'TRUE_FALSE') {
+      return [
+        { text: 'Đúng', isCorrect: false },
+        { text: 'Sai', isCorrect: false },
+      ];
+    }
+    return [
+      { text: '', isCorrect: false },
+      { text: '', isCorrect: false },
+      { text: '', isCorrect: false },
+      { text: '', isCorrect: false },
+    ];
+  };
+
+  const isOptionBasedType = (type: QuestionType) => type !== 'FILL_IN';
+  const isSingleCorrectType = (type: QuestionType) => type === 'SINGLE_CHOICE' || type === 'TRUE_FALSE';
+
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<{
     type: QuestionType;
@@ -36,6 +61,9 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
     difficulty: DifficultyLevel;
     points: number;
     content: string;
+    imageUrl: string;
+    correctAnswer: string;
+    explanation: string;
     options: { text: string; isCorrect: boolean }[];
   }>({
     type: 'MULTIPLE_CHOICE',
@@ -43,23 +71,26 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
     difficulty: 'UNDERSTAND',
     points: 10,
     content: '',
-    options: [
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false },
-    ],
+    imageUrl: '',
+    correctAnswer: '',
+    explanation: '',
+    options: buildDefaultOptions('MULTIPLE_CHOICE'),
   });
 
   useEffect(() => {
     if (editQuestion) {
       setForm({
         type: editQuestion.type,
-        topic: editQuestion.topic,
+        topic: editQuestion.topic || editQuestion.topics?.[0] || '',
         difficulty: editQuestion.difficulty,
         points: editQuestion.points,
         content: editQuestion.content,
-        options: editQuestion.options.map(o => ({ text: o.text, isCorrect: o.isCorrect })),
+        imageUrl: editQuestion.imageUrl || '',
+        correctAnswer: editQuestion.correctAnswer || '',
+        explanation: editQuestion.explanation || '',
+        options: editQuestion.type === 'FILL_IN'
+          ? buildDefaultOptions('MULTIPLE_CHOICE')
+          : (editQuestion.options || []).map(o => ({ text: o.text, isCorrect: o.isCorrect })),
       });
     } else {
       setForm({
@@ -68,12 +99,10 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
         difficulty: 'UNDERSTAND',
         points: 10,
         content: '',
-        options: [
-          { text: '', isCorrect: false },
-          { text: '', isCorrect: false },
-          { text: '', isCorrect: false },
-          { text: '', isCorrect: false },
-        ],
+        imageUrl: '',
+        correctAnswer: '',
+        explanation: '',
+        options: buildDefaultOptions('MULTIPLE_CHOICE'),
       });
     }
   }, [editQuestion, isOpen]);
@@ -85,13 +114,25 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
         if (i === index) {
           return { ...opt, [field]: value };
         }
-        // Với single choice, bỏ chọn các option khác
-        if (field === 'isCorrect' && value === true && prev.type !== 'MULTIPLE_CHOICE') {
+        if (field === 'isCorrect' && value === true && isSingleCorrectType(prev.type)) {
           return { ...opt, isCorrect: false };
         }
         return opt;
       }),
     }));
+  };
+
+  const handleTypeChange = (nextType: QuestionType) => {
+    setForm(prev => {
+      const nextOptions = nextType === prev.type
+        ? prev.options
+        : (nextType === 'TRUE_FALSE' ? buildDefaultOptions('TRUE_FALSE') : buildDefaultOptions(nextType));
+      return {
+        ...prev,
+        type: nextType,
+        options: nextOptions,
+      };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,13 +146,28 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
       toast.error('Vui lòng nhập chủ đề');
       return;
     }
-    if (!form.options.some(o => o.isCorrect)) {
-      toast.error('Vui lòng chọn ít nhất một đáp án đúng');
-      return;
-    }
-    if (form.options.filter(o => o.text.trim()).length < 2) {
-      toast.error('Vui lòng nhập ít nhất 2 đáp án');
-      return;
+
+    if (form.type === 'FILL_IN') {
+      if (!form.correctAnswer.trim()) {
+        toast.error('Vui lòng nhập đáp án đúng cho câu điền khuyết');
+        return;
+      }
+    } else {
+      const nonEmptyOptions = form.options.filter(o => o.text.trim());
+      const correctCount = form.options.filter(o => o.isCorrect).length;
+      if (nonEmptyOptions.length < 2) {
+        toast.error('Vui lòng nhập ít nhất 2 đáp án');
+        return;
+      }
+      if (form.type === 'SINGLE_CHOICE' || form.type === 'TRUE_FALSE') {
+        if (correctCount !== 1) {
+          toast.error('Loại câu hỏi này phải có đúng 1 đáp án đúng');
+          return;
+        }
+      } else if (correctCount < 1) {
+        toast.error('Vui lòng chọn ít nhất một đáp án đúng');
+        return;
+      }
     }
 
     setSaving(true);
@@ -122,10 +178,15 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
         difficulty: form.difficulty,
         points: form.points,
         content: form.content,
-        options: form.options.filter(o => o.text.trim()).map(o => ({
-          text: o.text,
-          isCorrect: o.isCorrect,
-        })),
+        imageUrl: form.imageUrl.trim() || undefined,
+        explanation: form.explanation.trim() || undefined,
+        correctAnswer: form.type === 'FILL_IN' ? form.correctAnswer.trim() : undefined,
+        options: form.type === 'FILL_IN'
+          ? []
+          : form.options.filter(o => o.text.trim()).map(o => ({
+              text: o.text,
+              isCorrect: o.isCorrect,
+            })),
       };
 
       let response;
@@ -167,9 +228,10 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
               <label className="mb-1 block text-sm font-medium">Loại câu hỏi</label>
               <select
                 value={form.type}
-                onChange={(e) => setForm(prev => ({ ...prev, type: e.target.value as QuestionType }))}
+                onChange={(e) => handleTypeChange(e.target.value as QuestionType)}
                 className="w-full rounded-md border px-3 py-2 text-sm"
               >
+                <option value="SINGLE_CHOICE">Trắc nghiệm 1 đáp án</option>
                 <option value="MULTIPLE_CHOICE">Trắc nghiệm nhiều lựa chọn</option>
                 <option value="TRUE_FALSE">Đúng/Sai</option>
                 <option value="FILL_IN">Điền khuyết</option>
@@ -221,37 +283,72 @@ function QuestionModal({ isOpen, onClose, onSuccess, editQuestion }: QuestionMod
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">Đáp án (tick chọn đáp án đúng)</label>
-            <div className="space-y-2">
-              {form.options.map((opt, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOptionChange(idx, 'isCorrect', !opt.isCorrect)}
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 ${
-                      opt.isCorrect ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300'
-                    }`}
-                  >
-                    {opt.isCorrect && <Check className="h-4 w-4" />}
-                  </button>
-                  <Input
-                    value={opt.text}
-                    onChange={(e) => handleOptionChange(idx, 'text', e.target.value)}
-                    placeholder={`Đáp án ${String.fromCharCode(65 + idx)}`}
-                    className="flex-1"
-                  />
-                </div>
-              ))}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Ảnh minh họa (URL)</label>
+              <Input
+                value={form.imageUrl}
+                onChange={(e) => setForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                placeholder="https://..."
+              />
             </div>
-            <button
-              type="button"
-              onClick={() => setForm(prev => ({ ...prev, options: [...prev.options, { text: '', isCorrect: false }] }))}
-              className="mt-2 text-sm text-blue-600 hover:underline"
-            >
-              + Thêm đáp án
-            </button>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Giải thích đáp án</label>
+              <Input
+                value={form.explanation}
+                onChange={(e) => setForm(prev => ({ ...prev, explanation: e.target.value }))}
+                placeholder="Giải thích ngắn gọn"
+              />
+            </div>
           </div>
+
+          {isOptionBasedType(form.type) ? (
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Đáp án {form.type === 'MULTIPLE_CHOICE' ? '(có thể chọn nhiều đáp án đúng)' : '(chọn một đáp án đúng)'}
+              </label>
+              <div className="space-y-2">
+                {form.options.map((opt, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOptionChange(idx, 'isCorrect', !opt.isCorrect)}
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 ${
+                        opt.isCorrect ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300'
+                      }`}
+                    >
+                      {opt.isCorrect && <Check className="h-4 w-4" />}
+                    </button>
+                    <Input
+                      value={opt.text}
+                      onChange={(e) => handleOptionChange(idx, 'text', e.target.value)}
+                      placeholder={form.type === 'TRUE_FALSE' ? (idx === 0 ? 'Đúng' : 'Sai') : `Đáp án ${String.fromCharCode(65 + idx)}`}
+                      className="flex-1"
+                      readOnly={form.type === 'TRUE_FALSE'}
+                    />
+                  </div>
+                ))}
+              </div>
+              {form.type !== 'TRUE_FALSE' && (
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, options: [...prev.options, { text: '', isCorrect: false }] }))}
+                  className="mt-2 text-sm text-blue-600 hover:underline"
+                >
+                  + Thêm đáp án
+                </button>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="mb-1 block text-sm font-medium">Đáp án đúng *</label>
+              <Input
+                value={form.correctAnswer}
+                onChange={(e) => setForm(prev => ({ ...prev, correctAnswer: e.target.value }))}
+                placeholder="Nhập đáp án đúng cho câu điền khuyết"
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 border-t pt-4">
             <Button type="button" variant="outline" onClick={onClose}>Hủy</Button>
@@ -411,8 +508,7 @@ export default function QuestionsPage() {
   };
 
   const getTypeBadge = (type: QuestionType) => {
-    const labels: Record<QuestionType, string> = { MULTIPLE_CHOICE: 'Trắc nghiệm', TRUE_FALSE: 'Đúng/Sai', FILL_IN: 'Điền khuyết' };
-    return <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">{labels[type]}</span>;
+    return <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">{QUESTION_TYPE_LABELS[type]}</span>;
   };
 
   const visiblePages = (() => {
@@ -464,7 +560,8 @@ export default function QuestionsPage() {
             </select>
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as QuestionType | 'all')} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
               <option value="all">Tất cả loại</option>
-              <option value="MULTIPLE_CHOICE">Trắc nghiệm</option>
+              <option value="SINGLE_CHOICE">{QUESTION_TYPE_LABELS.SINGLE_CHOICE}</option>
+              <option value="MULTIPLE_CHOICE">{QUESTION_TYPE_LABELS.MULTIPLE_CHOICE}</option>
               <option value="TRUE_FALSE">Đúng/Sai</option>
               <option value="FILL_IN">Điền khuyết</option>
             </select>

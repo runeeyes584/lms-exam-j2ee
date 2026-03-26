@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, CheckCircle, Clock, GraduationCap, Mail, User, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, ExternalLink, FileText, GraduationCap, Mail, User, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService, InstructorApprovalResponse } from '@/services/adminService';
 import { isSuccess } from '@/types/types';
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'react-hot-toast';
 
 export default function InstructorRequestsPage() {
+  const backendBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api').replace(/\/api\/?$/, '');
   const { isLoading: authLoading } = useAuth();
   const [requests, setRequests] = useState<InstructorApprovalResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +76,14 @@ export default function InstructorRequestsPage() {
     return badges[status];
   };
 
+  const resolveCvUrl = (cvFileUrl?: string) => {
+    if (!cvFileUrl) return '';
+    if (cvFileUrl.startsWith('http://') || cvFileUrl.startsWith('https://')) {
+      return cvFileUrl;
+    }
+    return `${backendBaseUrl}${cvFileUrl}`;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -134,6 +143,22 @@ export default function InstructorRequestsPage() {
                       <div className="rounded-lg bg-gray-50 p-3">
                         <p className="mb-1 text-xs font-medium text-gray-500">Ghi chú</p>
                         <p className="text-sm text-gray-900">{request.note || 'Không có ghi chú'}</p>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-3">
+                        <p className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-500"><FileText className="h-3 w-3" />CV đính kèm</p>
+                        {request.cvFileUrl ? (
+                          <a
+                            href={resolveCvUrl(request.cvFileUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900"
+                          >
+                            {request.cvOriginalFileName || 'Mở file CV'}
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        ) : (
+                          <p className="text-sm text-gray-900">Không có CV</p>
+                        )}
                       </div>
                     </div>
 

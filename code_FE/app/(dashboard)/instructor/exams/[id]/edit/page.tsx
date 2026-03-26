@@ -34,6 +34,7 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
     description: '',
     duration: 60,
     passingScore: 60,
+    allowResultReview: true,
     mode: 'MANUAL',
     questionIds: [],
   });
@@ -55,6 +56,7 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
           description: exam.description || '',
           duration: exam.duration,
           passingScore: exam.passingScore,
+          allowResultReview: exam.allowResultReview !== false,
           mode: exam.mode,
           questionIds: exam.questions?.map((q: any) => q.questionId || q.id).filter(Boolean) || [],
           courseId: exam.courseId,
@@ -196,6 +198,19 @@ export default function EditExamPage({ params }: { params: { id: string } }) {
                 placeholder="Mô tả ngắn về đề thi..."
               />
             </div>
+
+            <label className="flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+              <input
+                type="checkbox"
+                checked={form.allowResultReview !== false}
+                onChange={(e) => setForm(prev => ({ ...prev, allowResultReview: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Cho phép học viên xem review kết quả chi tiết</p>
+                <p className="text-xs text-gray-600">Nếu tắt, học viên chỉ thấy điểm tổng quan sau khi nộp bài</p>
+              </div>
+            </label>
           </CardContent>
         </Card>
 

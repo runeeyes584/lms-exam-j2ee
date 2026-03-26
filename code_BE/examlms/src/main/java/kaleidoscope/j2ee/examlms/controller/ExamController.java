@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kaleidoscope.j2ee.examlms.dto.request.ExamCreateRequest;
 import kaleidoscope.j2ee.examlms.dto.request.ExamGenerateRequest;
+import kaleidoscope.j2ee.examlms.dto.request.UpdateReviewVisibilityRequest;
 import kaleidoscope.j2ee.examlms.dto.response.ApiResponse;
 import kaleidoscope.j2ee.examlms.dto.response.ExamResponse;
 import kaleidoscope.j2ee.examlms.service.ExamGeneratorService;
@@ -127,6 +128,18 @@ public class ExamController {
     public ResponseEntity<ApiResponse<ExamResponse>> unpublishExam(@PathVariable String id) {
         ExamResponse response = examService.unpublishExam(id);
         return ResponseEntity.ok(ApiResponse.success("Exam unpublished successfully", response));
+    }
+
+    @PatchMapping("/{id}/review-visibility")
+    @Operation(summary = "Update review visibility",
+               description = "Allow or disable student review details for this exam")
+    public ResponseEntity<ApiResponse<ExamResponse>> updateReviewVisibility(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateReviewVisibilityRequest request,
+            @RequestHeader(value = "X-User-Id", defaultValue = "admin") String userId) {
+
+        ExamResponse response = examService.updateReviewVisibility(id, request.getAllowResultReview(), userId);
+        return ResponseEntity.ok(ApiResponse.success("Review visibility updated successfully", response));
     }
     
     @GetMapping("/my-exams")

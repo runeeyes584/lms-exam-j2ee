@@ -5,6 +5,10 @@ import type { PageResponse } from './courseService';
 export interface ExamAttemptResponse extends ExamAttempt {
   examTitle?: string;
   studentName?: string;
+  scoreOnTen?: number;
+  correctAnswers?: number;
+  totalQuestions?: number;
+  completionSeconds?: number;
   questionResults?: QuestionResult[];
 }
 

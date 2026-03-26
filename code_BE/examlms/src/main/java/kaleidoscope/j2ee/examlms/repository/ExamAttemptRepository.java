@@ -15,6 +15,9 @@ public interface ExamAttemptRepository extends MongoRepository<ExamAttempt, Stri
     
     // Find by student
     List<ExamAttempt> findByStudentId(String studentId);
+
+    // Find by student with pagination
+    Page<ExamAttempt> findByStudentId(String studentId, Pageable pageable);
     
     // Find by exam
     List<ExamAttempt> findByExamId(String examId);

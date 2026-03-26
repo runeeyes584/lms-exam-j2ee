@@ -44,14 +44,59 @@ export default function StudentExamsPage() {
 
       const publishedExams = isSuccess(examResponse.code) ? examResponse.result || [] : [];
       const myAttempts = isSuccess(attemptResponse.code) ? attemptResponse.result?.content || [] : [];
+      const examMap = new Map<string, StudentExam>();
 
-      setExams(
-        publishedExams.map(exam => ({
+      publishedExams.forEach(exam => {
+        examMap.set(exam.id, {
           ...exam,
-          attempts: myAttempts.filter(attempt => attempt.examId === exam.id),
+          attempts: [],
           maxAttempts: 3,
-        }))
-      );
+        });
+      });
+
+      const missingExamIds = myAttempts
+        .map(attempt => attempt.examId)
+        .filter(examId => !!examId && !examMap.has(examId));
+
+      if (missingExamIds.length > 0) {
+        const uniqueMissingIds = Array.from(new Set(missingExamIds));
+        const missingExamResponses = await Promise.all(
+          uniqueMissingIds.map(async examId => {
+            try {
+              const response = await examService.getById(examId);
+              return isSuccess(response.code) ? response.result : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        missingExamResponses.filter((exam): exam is ExamResponse => !!exam).forEach(exam => {
+          examMap.set(exam.id, {
+            ...exam,
+            attempts: [],
+            maxAttempts: 3,
+          });
+        });
+      }
+
+      myAttempts.forEach(attempt => {
+        if (!attempt.examId) return;
+        const currentExam = examMap.get(attempt.examId);
+        if (!currentExam) return;
+        currentExam.attempts.push(attempt);
+      });
+
+      const combinedExams = Array.from(examMap.values()).map(exam => ({
+        ...exam,
+        attempts: [...exam.attempts].sort((a, b) => {
+          const aTime = new Date(a.submittedAt || a.startTime || 0).getTime();
+          const bTime = new Date(b.submittedAt || b.startTime || 0).getTime();
+          return aTime - bTime;
+        }),
+      }));
+
+      setExams(combinedExams);
     } catch (error) {
       console.error('Lỗi tải danh sách bài thi:', error);
       setExams([]);
@@ -65,7 +110,7 @@ export default function StudentExamsPage() {
   const getExamStatus = (exam: StudentExam) => {
     if (exam.attempts.length === 0) return 'available';
     const lastAttempt = exam.attempts[exam.attempts.length - 1];
-    if (lastAttempt.status === 'ONGOING') return 'in-progress';
+    if (lastAttempt.status === 'ONGOING' || (lastAttempt.status as string) === 'IN_PROGRESS') return 'in-progress';
     if (lastAttempt.passed) return 'passed';
     if (exam.maxAttempts && exam.attempts.length >= exam.maxAttempts) return 'failed';
     return 'can-retry';

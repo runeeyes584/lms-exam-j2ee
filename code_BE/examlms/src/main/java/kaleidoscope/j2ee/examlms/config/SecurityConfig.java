@@ -55,6 +55,7 @@ public class SecurityConfig {
                         
                         // swagger ui
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
 
                         // profile: chỉ cần login
                         .requestMatchers("/api/users/**").authenticated()

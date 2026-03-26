@@ -26,6 +26,8 @@ public interface ExamService {
     ExamResponse publishExam(String id);
     
     ExamResponse unpublishExam(String id);
+
+    ExamResponse updateReviewVisibility(String id, Boolean allowResultReview, String userId);
     
     Page<ExamResponse> getExamsByCreator(String createdBy, Pageable pageable);
 }

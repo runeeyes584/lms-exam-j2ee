@@ -116,13 +116,14 @@ export interface Course {
 }
 
 // Question Types
-export type QuestionType = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_IN';
+export type QuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_IN';
 export type DifficultyLevel = 'RECOGNIZE' | 'UNDERSTAND' | 'APPLY' | 'ANALYZE';
 
 export interface QuestionOption {
   id: string;
   text: string;
   isCorrect: boolean;
+  imageUrl?: string;
 }
 
 export interface Question {
@@ -133,7 +134,9 @@ export interface Question {
   difficulty: DifficultyLevel;
   points: number;
   content: string;
+  imageUrl?: string;
   options: QuestionOption[];
+  correctAnswer?: string;
   explanation?: string;
   createdAt: string;
   updatedAt: string;
@@ -152,12 +155,13 @@ export interface Exam {
   questions: Question[];
   totalPoints: number;
   isPublished: boolean;
+  allowResultReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 // Exam Attempt Types
-export type AttemptStatus = 'ONGOING' | 'SUBMITTED' | 'AUTO_GRADED' | 'MANUAL_GRADED';
+export type AttemptStatus = 'ONGOING' | 'IN_PROGRESS' | 'SUBMITTED' | 'GRADED' | 'AUTO_GRADED' | 'MANUAL_GRADED';
 
 export interface StudentAnswer {
   questionId: string;

@@ -58,6 +58,7 @@ function ExamModal({ isOpen, onClose, onSuccess, courses }: ExamModalProps) {
     duration: 60,
     passingScore: 60,
     courseId: '',
+    allowResultReview: true,
     recognizeCount: 5,
     understandCount: 10,
     applyCount: 5,
@@ -118,6 +119,7 @@ function ExamModal({ isOpen, onClose, onSuccess, courses }: ExamModalProps) {
       duration: 60,
       passingScore: 60,
       courseId: '',
+      allowResultReview: true,
       recognizeCount: 5,
       understandCount: 10,
       applyCount: 5,
@@ -185,6 +187,7 @@ function ExamModal({ isOpen, onClose, onSuccess, courses }: ExamModalProps) {
               description: form.description,
               duration: form.duration,
               passingScore: form.passingScore,
+              allowResultReview: form.allowResultReview,
               mode: 'MANUAL',
               questionIds: selectedQuestions,
               courseId: form.courseId || undefined,
@@ -194,6 +197,7 @@ function ExamModal({ isOpen, onClose, onSuccess, courses }: ExamModalProps) {
               description: form.description,
               duration: form.duration,
               passingScore: form.passingScore,
+              allowResultReview: form.allowResultReview,
               courseId: form.courseId || undefined,
               topics: selectedTopics,
               difficultyMatrix: {
@@ -331,6 +335,19 @@ function ExamModal({ isOpen, onClose, onSuccess, courses }: ExamModalProps) {
               placeholder="Mô tả ngắn về đề thi..."
             />
           </div>
+
+          <label className="flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+            <input
+              type="checkbox"
+              checked={form.allowResultReview}
+              onChange={e => setForm(prev => ({ ...prev, allowResultReview: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <p className="text-sm font-medium text-gray-900">Cho phép học viên xem review kết quả chi tiết</p>
+              <p className="text-xs text-gray-600">Bao gồm đáp án đúng/sai và giải thích từng câu</p>
+            </div>
+          </label>
 
           {mode === 'MANUAL' && (
             <div>
@@ -593,6 +610,27 @@ export default function InstructorExamsPage() {
     }
   };
 
+  const toggleReviewVisibility = async (exam: ExamResponse) => {
+    try {
+      const nextValue = !(exam.allowResultReview !== false);
+      const response = await examService.updateReviewVisibility(exam.id, nextValue);
+      if (isSuccess(response.code)) {
+        setExams(prev =>
+          prev.map(item =>
+            item.id === exam.id
+              ? { ...item, allowResultReview: nextValue }
+              : item
+          )
+        );
+        toast.success(nextValue ? 'Đã bật xem review kết quả' : 'Đã tắt xem review kết quả');
+      } else {
+        toast.error(response.message || 'Không thể cập nhật');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Không thể cập nhật');
+    }
+  };
+
   const handleCopyExamId = async (examId: string) => {
     try {
       await navigator.clipboard.writeText(examId);
@@ -679,6 +717,9 @@ export default function InstructorExamsPage() {
                       >
                         {exam.isPublished ? 'Đã xuất bản' : 'Nháp'}
                       </span>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${exam.allowResultReview !== false ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'}`}>
+                        {exam.allowResultReview !== false ? 'Review: Bật' : 'Review: Tắt'}
+                      </span>
                       <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
                         {exam.mode === 'MANUAL' ? 'Chọn thủ công' : 'Ma trận'}
                       </span>
@@ -717,6 +758,9 @@ export default function InstructorExamsPage() {
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => togglePublish(exam)}>
                       {exam.isPublished ? 'Ẩn' : 'Xuất bản'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => toggleReviewVisibility(exam)}>
+                      {exam.allowResultReview !== false ? 'Tắt review' : 'Bật review'}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDelete(exam.id)}>
                       <Trash2 className="h-4 w-4 text-red-500" />
