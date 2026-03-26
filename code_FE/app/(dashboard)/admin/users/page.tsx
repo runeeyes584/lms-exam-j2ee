@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Ban, CheckCircle, Filter, Mail, Search, UserPlus, Users } from 'lucide-react';
+import { Ban, CheckCircle, Filter, Mail, Search, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminService, AdminUserResponse } from '@/services/adminService';
 import { isSuccess } from '@/types/types';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { PageLoading } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'react-hot-toast';
+import { authApi } from '@/lib/api';
 
 export default function AdminUsersPage() {
   const { isLoading: authLoading } = useAuth();
@@ -19,18 +20,56 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'STUDENT' | 'INSTRUCTOR' | 'ADMIN'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [isFallbackData, setIsFallbackData] = useState(false);
 
   useEffect(() => {
     void fetchUsers();
   }, []);
 
+  const extractUsers = (result: any): AdminUserResponse[] => {
+    if (Array.isArray(result)) return result;
+    if (Array.isArray(result?.content)) return result.content;
+    if (Array.isArray(result?.items)) return result.items;
+    if (Array.isArray(result?.data)) return result.data;
+    return [];
+  };
+
   const fetchUsers = async () => {
     try {
       const response = await adminService.getAllUsers(0, 200);
-      setUsers(isSuccess(response.code) ? response.result?.content || [] : []);
-    } catch (error) {
+      if (!isSuccess(response.code)) {
+        throw new Error(response.message || 'Không tải được danh sách người dùng');
+      }
+
+      const list = extractUsers(response.result);
+      if (list.length > 0) {
+        setUsers(list);
+        setIsFallbackData(false);
+        return;
+      }
+
+      // Fallback: nếu API admin trả rỗng thì vẫn hiển thị user hiện tại để tránh màn hình trắng dữ liệu
+      const meResponse = await authApi.getCurrentUser();
+      if (isSuccess(meResponse.code) && meResponse.result) {
+        setUsers([
+          {
+            ...meResponse.result,
+            isActive: true,
+            createdAt: meResponse.result.createdAt || new Date().toISOString(),
+            updatedAt: meResponse.result.updatedAt,
+          },
+        ]);
+        setIsFallbackData(true);
+        toast('API quản lý user đang trả rỗng, đang hiển thị dữ liệu tài khoản hiện tại.');
+      } else {
+        setUsers([]);
+        setIsFallbackData(false);
+      }
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       setUsers([]);
+      setIsFallbackData(false);
+      toast.error(error?.response?.data?.message || error?.message || 'Không tải được danh sách người dùng');
     } finally {
       setLoading(false);
     }
@@ -106,10 +145,6 @@ export default function AdminUsersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Quản lý người dùng</h1>
           <p className="mt-2 text-gray-600">Trang này đang kết nối trực tiếp với API quản lý người dùng của backend</p>
         </div>
-        <Button variant="outline" disabled>
-          <UserPlus className="mr-2 h-4 w-4" />
-          API tạo người dùng chưa có
-        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
@@ -134,6 +169,14 @@ export default function AdminUsersPage() {
           </Card>
         ))}
       </div>
+
+      {isFallbackData && (
+        <Card>
+          <CardContent className="p-4 text-sm text-amber-700">
+            Đang hiển thị dữ liệu fallback vì endpoint <code>/api/admin/users</code> trả về danh sách rỗng.
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

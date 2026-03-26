@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { loginSchema, type LoginFormData } from '@/lib/validations';
 
@@ -69,9 +70,8 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Mật khẩu
                 </label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   {...register('password')}
                   className="mt-1"
                   placeholder="Nhập mật khẩu"

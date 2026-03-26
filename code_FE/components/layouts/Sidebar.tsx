@@ -27,15 +27,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  // Common
   {
     title: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
     roles: ['STUDENT', 'INSTRUCTOR', 'ADMIN'],
   },
-  
-  // Student
   {
     title: 'Khóa học của tôi',
     href: '/student/courses',
@@ -60,13 +57,11 @@ const navItems: NavItem[] = [
     icon: Award,
     roles: ['STUDENT'],
   },
-  
-  // Instructor
   {
     title: 'Quản lý khóa học',
     href: '/instructor/courses',
     icon: FolderOpen,
-    roles: ['INSTRUCTOR', 'ADMIN'],
+    roles: ['INSTRUCTOR'],
   },
   {
     title: 'Ngân hàng câu hỏi',
@@ -92,8 +87,12 @@ const navItems: NavItem[] = [
     icon: Users,
     roles: ['INSTRUCTOR', 'ADMIN'],
   },
-  
-  // Admin
+  {
+    title: 'Quản lý khóa học',
+    href: '/admin/courses',
+    icon: FolderOpen,
+    roles: ['ADMIN'],
+  },
   {
     title: 'Quản lý người dùng',
     href: '/admin/users',
@@ -112,8 +111,6 @@ const navItems: NavItem[] = [
     icon: BarChart3,
     roles: ['ADMIN'],
   },
-  
-  // Common
   {
     title: 'Thảo luận',
     href: '/discussions',
@@ -134,9 +131,7 @@ export function Sidebar() {
 
   if (!user) return null;
 
-  const filteredNavItems = navItems.filter((item) =>
-    item.roles.includes(user.role)
-  );
+  const filteredNavItems = navItems.filter((item) => item.roles.includes(user.role));
 
   return (
     <aside className="fixed left-0 top-16 z-30 h-[calc(100vh-4rem)] w-64 overflow-y-auto border-r bg-white">

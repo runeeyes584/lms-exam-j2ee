@@ -66,7 +66,21 @@ export const adminService = {
     const response = await api.get('/admin/users', {
       params: { page, size, role, isActive: status === undefined ? undefined : status === 'active' },
     });
-    return response.data;
+    const result = response.data?.result;
+    const normalizedResult = Array.isArray(result)
+      ? {
+          content: result,
+          totalElements: result.length,
+          totalPages: 1,
+          size,
+          number: page,
+        }
+      : result;
+
+    return {
+      ...response.data,
+      result: normalizedResult,
+    };
   },
 
   updateUserStatus: async (userId: string, isActive: boolean): Promise<ApiResponse<AdminUserResponse>> => {

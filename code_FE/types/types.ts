@@ -15,8 +15,14 @@ export const ResponseCode = {
 } as const;
 
 // Helper to check if response is successful (handles both 0 and 1000)
-export const isSuccess = (code: number): boolean => {
-  return code === ResponseCode.SUCCESS || code === ResponseCode.SUCCESS_ALT;
+export const isSuccess = (code: number | string | undefined | null): boolean => {
+  const normalizedCode = Number(code);
+  return (
+    normalizedCode === ResponseCode.SUCCESS ||
+    normalizedCode === ResponseCode.SUCCESS_ALT ||
+    normalizedCode === 200 ||
+    normalizedCode === 201
+  );
 };
 
 // API Response Type (Backend standard)

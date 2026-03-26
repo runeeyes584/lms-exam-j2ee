@@ -9,7 +9,7 @@ import { PageLoading } from '@/components/ui/loading';
 import { User, Lock, Bell, Camera, Upload } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { userService } from '@/services';
-import { ResponseCode } from '@/types/types';
+import { isSuccess } from '@/types/types';
 import type { UpdateProfileRequest, ChangePasswordRequest } from '@/types/types';
 
 export default function SettingsPage() {
@@ -77,7 +77,7 @@ export default function SettingsPage() {
         schoolId: profileForm.schoolId || undefined,
       };
       const response = await userService.updateProfile(data);
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success('Cập nhật hồ sơ thành công!');
         refreshUser?.();
       } else {
@@ -107,7 +107,7 @@ export default function SettingsPage() {
         newPassword: passwordForm.newPassword,
       };
       const response = await userService.changePassword(data);
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success('Đổi mật khẩu thành công!');
         setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       } else {
@@ -139,7 +139,7 @@ export default function SettingsPage() {
     setUploading(true);
     try {
       const response = await userService.uploadAvatar(file);
-      if (response.code === ResponseCode.SUCCESS) {
+      if (isSuccess(response.code)) {
         toast.success('Cập nhật ảnh đại diện thành công!');
         refreshUser?.();
       } else {
@@ -341,3 +341,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

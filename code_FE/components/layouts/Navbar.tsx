@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, User, Settings, BookOpen } from 'lucide-react';
+import { LogOut, Settings, BookOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,23 +33,19 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <BookOpen className="h-6 w-6 text-blue-600" />
           <span className="text-xl font-bold text-gray-900">LMS Exam</span>
         </Link>
 
-        {/* Right side */}
         <div className="flex items-center gap-4">
           {isAuthenticated && user ? (
             <>
-              {/* User info */}
               <div className="hidden items-center gap-2 md:flex">
                 <span className="text-sm text-gray-600">Xin chào,</span>
                 <span className="text-sm font-medium text-gray-900">{user.fullName}</span>
               </div>
 
-              {/* User menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -77,10 +73,6 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    Hồ sơ của tôi
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     Cài đặt

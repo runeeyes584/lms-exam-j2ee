@@ -172,7 +172,7 @@ export default function CourseCatalogPage() {
                         {enrollingId === course.id ? 'Đang đăng ký...' : 'Đăng ký học'}
                       </Button>
                     ) : (
-                      <Link href={`/student/courses/${course.id}/checkout`}>
+                      <Link href={`/student/courses/${course.id}/checkout`} scroll={true}>
                         <Button size="sm">
                           <ShoppingCart className="mr-2 h-4 w-4" />
                           Đăng ký
@@ -189,3 +189,4 @@ export default function CourseCatalogPage() {
     </div>
   );
 }
+

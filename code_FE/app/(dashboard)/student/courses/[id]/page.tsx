@@ -1,6 +1,12 @@
-'use client';
+﻿'use client';
 
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PageLoading } from '@/components/ui/loading';
 import { useAuth } from '@/contexts/AuthContext';
 import { certificateService, commentService } from '@/services';
@@ -19,10 +25,13 @@ import {
   CheckCircle2,
   ChevronRight,
   Flag,
+  MoreHorizontal,
   MessageSquare,
+  Pencil,
   Plus,
+  Trash2,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -37,9 +46,12 @@ interface ExtendedChapter extends ChapterResponse {
 
 interface DiscussionItem {
   id: string;
+  userId: string;
+  parentId?: string;
   content: string;
   createdAt: string;
   authorName: string;
+  replies: DiscussionItem[];
 }
 
 type LearningTab = 'course' | 'progress' | 'important' | 'discussion';
@@ -60,6 +72,7 @@ const goalOptions: Array<{ key: WeeklyGoal; title: string; subtitle: string; les
 
 export default function CourseLearningPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
 
   const [course, setCourse] = useState<CourseResponse | null>(null);
@@ -70,7 +83,13 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
 
   const [discussionDraft, setDiscussionDraft] = useState('');
   const [discussions, setDiscussions] = useState<DiscussionItem[]>([]);
+  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [deleteTargetComment, setDeleteTargetComment] = useState<DiscussionItem | null>(null);
   const [claimingCertificate, setClaimingCertificate] = useState(false);
+  const targetCommentId = searchParams.get('commentId');
 
   useEffect(() => {
     if (authLoading) return;
@@ -98,9 +117,24 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
   }, [goal, params.id]);
 
   useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'discussion') {
+      setActiveTab('discussion');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (activeTab !== 'discussion' || !user?.id) return;
     void fetchDiscussionsFromApi(user.id);
   }, [activeTab, params.id, user?.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'discussion' || !targetCommentId || discussions.length === 0) return;
+    const element = document.getElementById(`discussion-${targetCommentId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeTab, targetCommentId, discussions]);
 
   const fetchCourseData = async () => {
     try {
@@ -225,14 +259,37 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
         setDiscussions([]);
         return;
       }
-
-      const mapped: DiscussionItem[] = (response.result?.content || []).map((comment) => ({
+      const mapComment = (comment: any): DiscussionItem => ({
         id: comment.id,
+        userId: comment.userId,
+        parentId: comment.parentId,
         content: comment.content || '',
         createdAt: comment.createdAt,
-        authorName: comment.userName || (comment.userId === userId ? user?.fullName || 'Bạn' : 'Ẩn danh'),
-      }));
-      setDiscussions(mapped);
+        authorName: comment.userName || (comment.userId === userId ? user?.fullName || 'B?n' : '?n danh'),
+        replies: [],
+      });
+
+      const topLevelComments = (response.result?.content || [])
+        .filter((comment) => !comment.parentId)
+        .map(mapComment);
+
+      const repliesResult = await Promise.allSettled(
+        topLevelComments.map((comment) => commentService.getReplies(comment.id))
+      );
+
+      const mapped: DiscussionItem[] = topLevelComments.map((comment, index) => {
+        const replyRes = repliesResult[index];
+        const replies =
+          replyRes.status === 'fulfilled' && isSuccess(replyRes.value.code)
+            ? (replyRes.value.result || []).map(mapComment).sort(
+                (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              )
+            : [];
+
+        return { ...comment, replies };
+      });
+
+      setDiscussions(mapped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (error) {
       console.error('Error fetching discussions:', error);
       setDiscussions([]);
@@ -261,6 +318,99 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
       toast.success('Đã gửi thảo luận');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Không thể gửi thảo luận');
+    }
+  };
+
+  const addReply = async (parentId: string) => {
+    const content = replyDraft.trim();
+    if (!content || !user?.id) return;
+
+    try {
+      const response = await commentService.create({
+        courseId: params.id,
+        parentId,
+        userId: user.id,
+        userName: user.fullName,
+        content,
+      });
+
+      if (!isSuccess(response.code)) {
+        toast.error(response.message || 'Không thể gửi phản hồi');
+        return;
+      }
+
+      setReplyDraft('');
+      setReplyTargetId(null);
+      await fetchDiscussionsFromApi(user.id);
+      toast.success('Đã gửi phản hồi');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Không thể gửi phản hồi');
+    }
+  };
+
+  const startEditComment = (item: DiscussionItem) => {
+    setReplyTargetId(null);
+    setEditingCommentId(item.id);
+    setEditingContent(item.content);
+  };
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingContent('');
+  };
+
+  const saveEditComment = async (item: DiscussionItem) => {
+    if (!user?.id) return;
+    const content = editingContent.trim();
+    if (!content) {
+      toast.error('Nội dung không được để trống');
+      return;
+    }
+
+    try {
+      const response = await commentService.update(item.id, user.id, content);
+      if (!isSuccess(response.code)) {
+        toast.error(response.message || 'Không thể cập nhật bình luận');
+        return;
+      }
+
+      cancelEditComment();
+      await fetchDiscussionsFromApi(user.id);
+      toast.success('Đã cập nhật bình luận');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Không thể cập nhật bình luận');
+    }
+  };
+
+  const requestDeleteComment = (item: DiscussionItem) => {
+    setDeleteTargetComment(item);
+  };
+
+  const confirmDeleteComment = async () => {
+    const item = deleteTargetComment;
+    if (!item) return;
+    if (!user?.id) return;
+    let loadingToastId: string | undefined;
+
+    try {
+      loadingToastId = toast.loading('Đang xóa bình luận...');
+      const response = await commentService.delete(item.id, user.id);
+      if (!isSuccess(response.code)) {
+        toast.dismiss(loadingToastId);
+        toast.error(response.message || 'Không thể xóa bình luận');
+        return;
+      }
+
+      if (editingCommentId === item.id) {
+        cancelEditComment();
+      }
+      await fetchDiscussionsFromApi(user.id);
+      toast.dismiss(loadingToastId);
+      toast.success('Đã xóa bình luận');
+      setDeleteTargetComment(null);
+    } catch (error: any) {
+      if (loadingToastId) toast.dismiss(loadingToastId);
+      toast.error(error?.response?.data?.message || 'Không thể xóa bình luận');
     }
   };
 
@@ -489,12 +639,136 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
                   <p className="rounded border border-dashed p-4 text-sm text-gray-500">Chưa có thảo luận nào.</p>
                 ) : (
                   discussions.map(item => (
-                    <div key={item.id} className="rounded border p-4">
+                    <div
+                      id={`discussion-${item.id}`}
+                      key={item.id}
+                      className={`group rounded border p-4 ${
+                        targetCommentId === item.id ? 'border-blue-400 bg-blue-50/40 shadow-sm' : ''
+                      }`}
+                    >
                       <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
                         <span>{item.authorName}</span>
-                        <span>{new Date(item.createdAt).toLocaleString('vi-VN')}</span>
+                        <div className="flex items-center gap-2">
+                          <span>{new Date(item.createdAt).toLocaleString('vi-VN')}</span>
+                          {user?.id === item.userId && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="rounded p-1 text-gray-500 opacity-0 hover:bg-gray-100 hover:text-gray-700 focus:opacity-100 group-hover:opacity-100"
+                                  aria-label="Tùy chọn bình luận"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => startEditComment(item)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Sửa
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-600" onClick={() => requestDeleteComment(item)}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Xóa
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{item.content}</p>
+                      {editingCommentId === item.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editingContent}
+                            onChange={e => setEditingContent(e.target.value)}
+                            rows={3}
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => void saveEditComment(item)}>Lưu</Button>
+                            <Button size="sm" variant="outline" onClick={cancelEditComment}>Hủy</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap">{item.content}</p>
+                      )}
+
+                      <div className="mt-2 flex items-center gap-3 text-xs">
+                        <button
+                          type="button"
+                          className="font-medium text-blue-700 hover:underline"
+                          onClick={() => setReplyTargetId(prev => (prev === item.id ? null : item.id))}
+                        >
+                          Phản hồi
+                        </button>
+                        <span className="text-gray-500">{item.replies.length} phản hồi</span>
+                      </div>
+
+                      {replyTargetId === item.id && (
+                        <div className="mt-3 flex gap-2">
+                          <textarea
+                            value={replyDraft}
+                            onChange={e => setReplyDraft(e.target.value)}
+                            rows={2}
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                            placeholder="Nhập phản hồi của bạn..."
+                          />
+                          <Button onClick={() => addReply(item.id)}>Gửi</Button>
+                        </div>
+                      )}
+
+                      {item.replies.length > 0 && (
+                        <div className="mt-3 space-y-2 border-l-2 border-gray-200 pl-3">
+                          {item.replies.map(reply => (
+                            <div key={reply.id} className="group rounded border bg-gray-50 p-3">
+                              <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+                                <span>{reply.authorName}</span>
+                                <div className="flex items-center gap-2">
+                                  <span>{new Date(reply.createdAt).toLocaleString('vi-VN')}</span>
+                                  {user?.id === reply.userId && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button
+                                          type="button"
+                                          className="rounded p-1 text-gray-500 opacity-0 hover:bg-gray-200 hover:text-gray-700 focus:opacity-100 group-hover:opacity-100"
+                                          aria-label="Tùy chọn phản hồi"
+                                        >
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => startEditComment(reply)}>
+                                          <Pencil className="mr-2 h-4 w-4" />
+                                          Sửa
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-red-600" onClick={() => requestDeleteComment(reply)}>
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Xóa
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                              </div>
+                              {editingCommentId === reply.id ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={editingContent}
+                                    onChange={e => setEditingContent(e.target.value)}
+                                    rows={3}
+                                    className="w-full rounded-md border px-3 py-2 text-sm"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => void saveEditComment(reply)}>Lưu</Button>
+                                    <Button size="sm" variant="outline" onClick={cancelEditComment}>Hủy</Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -567,6 +841,31 @@ export default function CourseLearningPage({ params }: { params: { id: string } 
           </div>
         </aside>
       </div>
+
+      {deleteTargetComment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+            <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa bình luận</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Bạn có chắc muốn xóa bình luận này không? Hành động này không thể hoàn tác.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteTargetComment(null)}>
+                Hủy
+              </Button>
+              <Button className="bg-red-600 hover:bg-red-700" onClick={() => void confirmDeleteComment()}>
+                Xóa
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+
+
+
+

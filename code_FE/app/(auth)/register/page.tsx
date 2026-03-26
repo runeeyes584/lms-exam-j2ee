@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { registerSchema, type RegisterFormData } from '@/lib/validations';
 
@@ -91,9 +92,8 @@ export default function RegisterPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Mật khẩu
                 </label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   {...register('password')}
                   className="mt-1"
                   placeholder="Tạo mật khẩu"
@@ -107,9 +107,8 @@ export default function RegisterPage() {
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                   Xác nhận mật khẩu
                 </label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   {...register('confirmPassword')}
                   className="mt-1"
                   placeholder="Nhập lại mật khẩu"

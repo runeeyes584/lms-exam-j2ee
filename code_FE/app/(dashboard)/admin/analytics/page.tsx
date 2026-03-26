@@ -16,6 +16,14 @@ interface AnalyticsStats extends DashboardStats {
   recentActivity: { label: string; users: number; revenue: number }[];
 }
 
+const extractList = <T,>(result: any): T[] => {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.content)) return result.content;
+  if (Array.isArray(result?.items)) return result.items;
+  if (Array.isArray(result?.data)) return result.data;
+  return [];
+};
+
 export default function AdminAnalyticsPage() {
   const { isLoading: authLoading } = useAuth();
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
@@ -27,6 +35,7 @@ export default function AdminAnalyticsPage() {
   }, [period]);
 
   const fetchStats = async () => {
+    setLoading(true);
     try {
       const year = new Date().getFullYear();
       const [dashboardResponse, usersResponse, newUsersResponse, revenueResponse] = await Promise.all([
@@ -36,31 +45,28 @@ export default function AdminAnalyticsPage() {
         analyticsService.getRevenue(year),
       ]);
 
-      if (!isSuccess(dashboardResponse.code) || !dashboardResponse.result) {
-        setStats(null);
-        return;
-      }
+      const users = isSuccess(usersResponse.code) ? extractList<any>(usersResponse.result) : [];
+      const newUsers = isSuccess(newUsersResponse.code) ? extractList<any>(newUsersResponse.result) : [];
+      const revenue = isSuccess(revenueResponse.code) ? extractList<any>(revenueResponse.result) : [];
+      const dashboardData: any = isSuccess(dashboardResponse.code) ? dashboardResponse.result || {} : {};
 
-      const users = isSuccess(usersResponse.code) ? usersResponse.result?.content || [] : [];
-      const newUsers = isSuccess(newUsersResponse.code) ? newUsersResponse.result || [] : [];
-      const revenue = isSuccess(revenueResponse.code) ? revenueResponse.result || [] : [];
       const revenueMap = new Map(
         revenue.map((item: any) => [String(item?._id?.month ?? item?.month ?? ''), Number(item?.totalRevenue ?? item?.revenue ?? 0)])
       );
 
       setStats({
-        ...dashboardResponse.result,
-        totalUsers: Number(dashboardResponse.result.totalUsers ?? users.length),
+        ...dashboardData,
+        totalUsers: Number(dashboardData.totalUsers ?? users.length),
         totalStudents: users.filter(user => user.role === 'STUDENT').length,
         totalInstructors: users.filter(user => user.role === 'INSTRUCTOR').length,
-        totalCourses: Number(dashboardResponse.result.totalCourses ?? 0),
-        totalExams: Number(dashboardResponse.result.totalExams ?? 0),
-        totalAttempts: Number(dashboardResponse.result.totalAttempts ?? dashboardResponse.result.totalOrders ?? 0),
-        totalRevenue: Number(dashboardResponse.result.totalRevenue ?? 0),
-        newUsersThisMonth: Number(dashboardResponse.result.newUsersThisMonth ?? 0),
-        activeUsersThisWeek: Number(dashboardResponse.result.activeUsersThisWeek ?? 0),
-        totalOrders: Number(dashboardResponse.result.totalOrders ?? 0),
-        totalReviews: Number(dashboardResponse.result.totalReviews ?? 0),
+        totalCourses: Number(dashboardData.totalCourses ?? 0),
+        totalExams: Number(dashboardData.totalExams ?? 0),
+        totalAttempts: Number(dashboardData.totalAttempts ?? dashboardData.totalOrders ?? 0),
+        totalRevenue: Number(dashboardData.totalRevenue ?? 0),
+        newUsersThisMonth: Number(dashboardData.newUsersThisMonth ?? 0),
+        activeUsersThisWeek: Number(dashboardData.activeUsersThisWeek ?? 0),
+        totalOrders: Number(dashboardData.totalOrders ?? 0),
+        totalReviews: Number(dashboardData.totalReviews ?? 0),
         recentActivity: newUsers.map((item: any) => {
           const month = String(item?._id?.month ?? item?.month ?? '');
           return {
@@ -80,7 +86,7 @@ export default function AdminAnalyticsPage() {
 
   if (authLoading || loading) return <PageLoading message="Đang tải thống kê..." />;
   if (!stats) {
-    return <EmptyState icon={BarChart3} title="Không tải được thống kê" description="Backend không trả về dữ liệu phù hợp cho màn hình này." />;
+    return <EmptyState icon={BarChart3} title="Không tải được thống kê" description="Không nhận được dữ liệu phù hợp từ backend." />;
   }
 
   const totalUsers = Number(stats.totalUsers ?? 0);
@@ -108,7 +114,7 @@ export default function AdminAnalyticsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Báo cáo & Thống kê</h1>
-          <p className="mt-2 text-gray-600">Trang này đang kết nối trực tiếp với API analytics thực tế của backend</p>
+          <p className="mt-2 text-gray-600">Trang này hiển thị dữ liệu thực tế từ API backend.</p>
         </div>
         <div className="flex gap-2">
           {(['week', 'month', 'year'] as const).map(value => (
@@ -146,7 +152,7 @@ export default function AdminAnalyticsPage() {
           <CardContent>
             <div className="space-y-4">
               {stats.recentActivity.length === 0 ? (
-                <p className="text-sm text-gray-500">Backend chưa trả về dữ liệu mới cho phần này.</p>
+                <p className="text-sm text-gray-500">Chưa có dữ liệu hoạt động.</p>
               ) : (
                 stats.recentActivity.map((item, index) => (
                   <div key={index} className="flex items-center justify-between border-b pb-3 last:border-0">
@@ -203,17 +209,17 @@ export default function AdminAnalyticsPage() {
             <div className="rounded-lg bg-blue-50 p-4">
               <p className="text-sm font-medium text-blue-600">Tỷ lệ review/truy cập</p>
               <p className="mt-1 text-3xl font-bold text-blue-700">{totalAttempts > 0 ? Math.round((totalReviews / totalAttempts) * 100) : 0}%</p>
-              <p className="mt-1 text-xs text-blue-500">Tính từ reviews và attempts/orders hiện có</p>
+              <p className="mt-1 text-xs text-blue-500">Tính theo reviews và attempts/orders hiện có</p>
             </div>
             <div className="rounded-lg bg-green-50 p-4">
               <p className="text-sm font-medium text-green-600">Tổng khóa học</p>
               <p className="mt-1 text-xl font-bold text-green-700">{totalCourses.toLocaleString('vi-VN')}</p>
-              <p className="mt-1 text-xs text-green-500">Giá trị backend trả về trong dashboard</p>
+              <p className="mt-1 text-xs text-green-500">Giá trị backend trả về</p>
             </div>
             <div className="rounded-lg bg-purple-50 p-4">
               <p className="text-sm font-medium text-purple-600">Người dùng hoạt động tuần này</p>
               <p className="mt-1 text-xl font-bold text-purple-700">{Number(stats.activeUsersThisWeek ?? 0).toLocaleString('vi-VN')}</p>
-              <p className="mt-1 text-xs text-purple-500">Nếu backend chưa tính thì sẽ là 0</p>
+              <p className="mt-1 text-xs text-purple-500">Nếu backend chưa tính sẽ là 0</p>
             </div>
           </div>
         </CardContent>

@@ -23,6 +23,12 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
     fetchCourseDetails();
   }, [params.id]);
 
