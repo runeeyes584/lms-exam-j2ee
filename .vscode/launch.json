@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-ExamlmsApplication<examlms>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "kaleidoscope.j2ee.examlms.ExamlmsApplication",
+            "projectName": "examlms",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

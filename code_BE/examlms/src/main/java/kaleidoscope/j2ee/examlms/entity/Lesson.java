@@ -1,0 +1,45 @@
+package kaleidoscope.j2ee.examlms.entity;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Represents a Lesson inside a Chapter.
+ * Lessons are ordered by orderIndex within a chapter.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Document(collection = "lessons")
+public class Lesson {
+
+    @Id
+    private String id;
+
+    /** Reference to the parent chapter */
+    private String chapterId;
+
+    private String title;
+
+    /** Optional rich-text / markdown content for the lesson */
+    private String content;
+
+    /** Optional video URL (Youtube, Vimeo, CDN...) */
+    private String videoUrl;
+
+    /** Optional duration in minutes */
+    private Integer duration;
+
+    /** Determines the display order within the chapter (1-based) */
+    private int orderIndex;
+
+    /** Soft-delete flag */
+    @Builder.Default
+    private boolean isDeleted = false;
+}

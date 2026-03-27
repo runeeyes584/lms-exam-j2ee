@@ -1,0 +1,73 @@
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== IDEs / Editors =====
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# ===== Build outputs =====
+**/target/
+**/build/
+**/out/
+
+# ===== Logs =====
+**/*.log
+logs/
+
+# ===== Environment / Secrets =====
+**/.env
+**/.env.*
+!.env.example
+
+# Direnv
+.envrc
+
+# Frontend local config (do not commit)
+code_BE/examlms/src/main/resources/static/app-config.json
+
+# Certificates / Keys
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*.cer
+**/*.crt
+
+# Spring local-only overrides (keep application.properties tracked)
+**/application-local.properties
+**/application-*.local.properties
+**/application-*.secret.properties
+
+# ===== Node =====
+**/node_modules/
+
+# ===== Python =====
+**/__pycache__/
+**/.pytest_cache/
+**/*.pyc
+
+# ===== Temp files =====
+**/*.tmp
+**/*.temp
+**/*.swp
+**/*.swo
+**/*~
+**/*.bak
+**/*.orig
+
+# ===== JVM crash / profiler dumps =====
+hs_err_pid*.log
+**/*.hprof
